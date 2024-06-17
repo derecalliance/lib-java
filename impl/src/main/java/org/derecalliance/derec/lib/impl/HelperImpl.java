@@ -10,6 +10,8 @@ import org.derecalliance.derec.lib.api.DeRecHelper;
 import org.derecalliance.derec.lib.api.DeRecIdentity;
 import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.derecalliance.derec.protobuf.Parameterrange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -27,6 +29,9 @@ public class HelperImpl implements DeRecHelper {
 
     ConcurrentHashMap<DeRecIdentity, ConcurrentHashMap<DeRecSecret.Id, SharerStatusImpl>> sharerStatuses =
             new ConcurrentHashMap<>();
+
+    Logger logger = LoggerFactory.getLogger(this.getClass().getName());
+
     private Function<DeRecHelper.Notification, DeRecHelper.NotificationResponse> listener = n -> {
         return null;
     }; // do nothing
@@ -83,16 +88,19 @@ public class HelperImpl implements DeRecHelper {
         // If a LibIdentity is already created for my role as a Sharer, reuse that LibIdentity, otherwise create a
         // new LibIdentity
         if (LibState.getInstance().myHelperAndSharerId == null) {
-            System.out.println("HelperImpl: Creating new LibIdentity as a Helper for " + name);
+            logger.debug("HelperImpl: Creating new LibIdentity as a Helper for " + name);
             myLibId = new LibIdentity(name, uri, uri);
             LibState.getInstance().myHelperAndSharerId = myLibId;
         } else {
-            System.out.println("HelperImpl: Reusing Sharer's LibIdentity as a Helper for " + name);
+            logger.debug("HelperImpl: Reusing Sharer's LibIdentity as a Helper for " + name);
             myLibId = LibState.getInstance().myHelperAndSharerId;
         }
         parameterRange = Parameterrange.ParameterRange.newBuilder().build();
         LibState.getInstance().messageHashToIdentityMap.put(
                 ByteString.copyFrom(myLibId.getMyId().getPublicEncryptionKeyDigest()), myLibId.getMyId());
+        logger.debug("Added myself (Helper) " + name + " to messageHashToIdentityMap");
+        LibState.getInstance().printMessageHashToIdentityMap();
+
         LibState.getInstance().setMeHelper(this);
         LibState.getInstance().init(uri);
     }
@@ -180,7 +188,7 @@ public class HelperImpl implements DeRecHelper {
                 recdCommittedDeRecShares.remove(sharerId.getPublicEncryptionKey());
             }
         } else {
-            System.out.println("In removeSharer, could not find shares for " + sharerId.getName());
+            logger.debug("In removeSharer, could not find shares for " + sharerId.getName());
             return false;
         }
         return true;
@@ -224,8 +232,8 @@ public class HelperImpl implements DeRecHelper {
     public void removeVersion(SharerStatus sharerStatus,
                               DeRecSecret.Id secretId,
                               int versionNumber) {
-        System.out.println("in LIb: removeVersion");
-        System.out.println("Before removing version: recdCommittedDeRecShares are: " + sharesToString());
+        logger.debug("in LIb: removeVersion");
+        logger.debug("Before removing version: recdCommittedDeRecShares are: " + sharesToString());
         ConcurrentHashMap<DeRecSecret.Id, ConcurrentHashMap<Integer, ShareImpl>> secretMaps =
                 recdCommittedDeRecShares.get(sharerStatus.getId().getPublicEncryptionKey());
         if (secretMaps != null) {
@@ -234,7 +242,7 @@ public class HelperImpl implements DeRecHelper {
                 versionMap.remove(versionNumber);
             }
         }
-        System.out.println("After removing version: recdCommittedDeRecShares are: " + sharesToString());
+        logger.debug("After removing version: recdCommittedDeRecShares are: " + sharesToString());
     }
 
     @Override
@@ -262,13 +270,13 @@ public class HelperImpl implements DeRecHelper {
 //                null, null, 101);
 //
 //        DeRecHelper.NotificationResponse response = listener.apply(dummy);
-//        System.out.println("---------- Response: " + response);
+//        logger.debug("---------- Response: " + response);
     }
 
 
 
     void addShare(SharerStatusImpl sharerStatus, DeRecSecret.Id secretId, int versionNumber, ShareImpl share) {
-        System.out.println("in addshare, sharer pubEncryptionKey: " + sharerStatus.getId().getPublicEncryptionKey() + "the " +
+        logger.debug("in addshare, sharer pubEncryptionKey: " + sharerStatus.getId().getPublicEncryptionKey() + "the " +
                 "recdCommittedDeRecShares map is:\n" + sharesToString());
 
         ConcurrentHashMap<DeRecSecret.Id, ConcurrentHashMap<Integer, ShareImpl>> secretMaps =
@@ -311,9 +319,9 @@ public class HelperImpl implements DeRecHelper {
 
         if (recdCommittedDeRecShares.get(sharerStatus.getId().getPublicEncryptionKey()) == null) {
             recdCommittedDeRecShares.put(sharerStatus.getId().getPublicEncryptionKey(), new ConcurrentHashMap<>());
-            System.out.println("-------- added sharer to recdCommittedDeRecShares map ------------------------");
+            logger.debug("-------- added sharer to recdCommittedDeRecShares map ------------------------");
         }
-        System.out.println("in addsharer, the recdCommittedDeRecShares map is:\n" + sharesToString());
+        logger.debug("in addsharer, the recdCommittedDeRecShares map is:\n" + sharesToString());
     }
 
     SharerStatusImpl getSharerStatus(DeRecIdentity sharerId, DeRecSecret.Id secretId) {
@@ -331,19 +339,19 @@ public class HelperImpl implements DeRecHelper {
 //                .putIfAbsent(secretId, new ConcurrentHashMap<>());
         ConcurrentHashMap<DeRecSecret.Id, ConcurrentHashMap<Integer, ShareImpl>> smap = recdCommittedDeRecShares.get(sharerStatus.getId().getPublicEncryptionKey());
         if (smap == null) {
-            System.out.println("Attempting to add secret to non-existent sharer");
+            logger.debug("Attempting to add secret to non-existent sharer");
             throw new RuntimeException("Attempting to add secret to non-existent sharer");
         }
         if (smap.get(secretId) == null) {
             smap.put(secretId, new ConcurrentHashMap<>());
         }
-        System.out.println("in addsecret, the recdCommittedDeRecShares map is:\n" + sharesToString());
+        logger.debug("in addsecret, the recdCommittedDeRecShares map is:\n" + sharesToString());
     }
 
     public long createAndStoreNewNonce() {
         long nonce = new Random().nextLong();
         generatedNonces.add(nonce);
-        System.out.println("in createAndStoreNewNonce: generated nonces is:" + generatedNonces.toString());
+        logger.debug("in createAndStoreNewNonce: generated nonces is:" + generatedNonces.toString());
         return nonce;
     }
     public boolean validateAndRemoveNonce(long nonce) {
@@ -351,7 +359,7 @@ public class HelperImpl implements DeRecHelper {
         //  PairingResponse is lost, and the initiator resends the
         //  PairingRequest after a timeout?
 
-        System.out.println("in validateAndRemoveNonce: nonces are:" + generatedNonces.toString());
+        logger.debug("in validateAndRemoveNonce: nonces are:" + generatedNonces.toString());
         return true;
 //        if (generatedNonces.contains(nonce)) {
 //            generatedNonces.remove(nonce);
@@ -419,16 +427,16 @@ public class HelperImpl implements DeRecHelper {
 
     void deleteCommittedDerecSharesBasedOnUpdatedKeepList(DeRecIdentity sharerId, DeRecSecret.Id secretId,
                                                           List<Integer> keepList) {
-        System.out.println("In deleteCommittedDerecSharesBasedOnUpdatedKeepList, keeplist is " + keepList);
+        logger.debug("In deleteCommittedDerecSharesBasedOnUpdatedKeepList, keeplist is " + keepList);
         // Remove stored shares
         List<Integer> storedVersionNumbersList =
                 recdCommittedDeRecShares.get(sharerId.getPublicEncryptionKey()).get(secretId).keySet().stream().toList();
         storedVersionNumbersList.forEach((storedVersionNumber) -> {
             if (!keepList.contains(storedVersionNumber)) {
-                System.out.println("Deleting version " + storedVersionNumber + " since it's not in the keeplist");
+                logger.debug("Deleting version " + storedVersionNumber + " since it's not in the keeplist");
                 recdCommittedDeRecShares.get(sharerId.getPublicEncryptionKey()).get(secretId).remove(storedVersionNumber);
             } else {
-                System.out.println("Not Deleting version " + storedVersionNumber + " it is in the keeplist");
+                logger.debug("Not Deleting version " + storedVersionNumber + " it is in the keeplist");
             }
         });
     }
@@ -436,7 +444,7 @@ public class HelperImpl implements DeRecHelper {
     public DeRecHelper.NotificationResponse deliverNotification(DeRecHelper.Notification.Type type, DeRecIdentity sharerId, DeRecSecret.Id secretId, int versionNumber) {
         Notification notification = new Notification(type, sharerId, secretId, versionNumber);
         DeRecHelper.NotificationResponse response = listener.apply(notification);
-        System.out.println("In deliverNotification: response is " + response);
+        logger.debug("In deliverNotification: response is " + response);
         return response;
     }
 

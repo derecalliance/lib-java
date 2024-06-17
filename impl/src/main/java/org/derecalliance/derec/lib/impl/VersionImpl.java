@@ -194,11 +194,11 @@ public class VersionImpl implements DeRecVersion {
                     secret.getSecretId(),
                     LibState.getInstance().getMeSharer().getMyLibId().getPublicEncryptionKeyId(),
                     versionNumber,nonce);
-
+            System.out.println("Sent VerifyShareRequestMessage to " + entry.getKey().getId().getName());
             // Every time we send a verification request, increment the unsuccessful verification count by 1.
             unsuccessfulVerificationRequests.put(entry.getKey(),
                     unsuccessfulVerificationRequests.get(entry.getKey()) + 1);
-            logger.info("Incremented unsuccessfulVerificationRequests by 1 for " + entry.getKey());
+            logger.info("Incremented unsuccessfulVerificationRequests by 1 for " + entry.getKey().getId().getName());
 
 
             if (unsuccessfulVerificationRequests.get(entry.getKey()) > LibState.getInstance().thresholdToMarkHelperFailed) {

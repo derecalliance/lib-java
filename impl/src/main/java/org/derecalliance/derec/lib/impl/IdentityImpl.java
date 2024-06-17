@@ -37,7 +37,7 @@ public class IdentityImpl extends DeRecIdentity {
         } catch (Exception ex) {
             System.out.printf("Exception in serializeDeRecIdentity");
             ex.printStackTrace();
-            return null;
+            return new byte[0];
         }
     }
     public static DeRecIdentity deserializeDeRecIdentity(byte[] data) throws IOException, ClassNotFoundException {

@@ -203,27 +203,54 @@ public class RecoveryContext {
                 System.out.printf("Check: " +  new String(currentSecret.getVersionByNumber(versionNumber).getProtectedValue()));
             }
 
+//            System.out.println("Going to Add helperStatuses to the currentSecret");
+//            // Add helperStatuses to the currentSecret
+//            for (DeRecHelperStatus helperStatus : (List<DeRecHelperStatus>)recoveredSecret.getHelperStatuses()) {
+//                System.out.println("Processing helperstatus: " + helperStatus.getId().getName());
+//                // Add this helperStatus to the currentSecret only if it doesn't already exist.
+//                Optional<? extends DeRecHelperStatus> existingHelperStatusOptional =
+//                        currentSecret.getHelperStatuses().stream()
+//                        .filter(hs -> hs.getId().getPublicEncryptionKey().equals(helperStatus.getId().getPublicEncryptionKey()))
+//                        .findFirst();
+//                System.out.println("After findfirst");
+//                if (!existingHelperStatusOptional.isPresent()) {
+//                    System.out.println("New helper found!!! " + helperStatus.getId().getName());
+////                    currentSecret.addHelpersAsync(new ArrayList<>(Arrays.asList(helperStatus.getId())));
+////                    currentSecret.processAddHelpersAsync(new ArrayList<>(Arrays.asList(helperStatus.getId())), false);
+//                    currentSecret.addRecoveredHelper((HelperStatusImpl) helperStatus);
+//                    System.out.println("Added Helper successfully");
+//                    System.out.println("Check2: " + currentSecret.getHelperStatuses().contains(helperStatus));
+//                } else {
+//                    System.out.println("Helper " + helperStatus.getId().getName() + " is already present in the " +
+//                            "currentSecret");
+//                }
+//
+//            }
+
             System.out.println("Going to Add helperStatuses to the currentSecret");
             // Add helperStatuses to the currentSecret
             for (DeRecHelperStatus helperStatus : (List<DeRecHelperStatus>)recoveredSecret.getHelperStatuses()) {
                 System.out.println("Processing helperstatus: " + helperStatus.getId().getName());
                 // Add this helperStatus to the currentSecret only if it doesn't already exist.
-                Optional<? extends DeRecHelperStatus> existingHelperStatusOptional =
-                        currentSecret.getHelperStatuses().stream()
-                        .filter(hs -> hs.getId().getPublicEncryptionKey().equals(helperStatus.getId().getPublicEncryptionKey()))
-                        .findFirst();
-                System.out.println("After findfirst");
-                if (!existingHelperStatusOptional.isPresent()) {
+//                Optional<? extends DeRecHelperStatus> existingHelperStatusOptional =
+//                        currentSecret.getHelperStatuses().stream()
+//                                .filter(hs -> hs.getId().getPublicEncryptionKey().equals(helperStatus.getId().getPublicEncryptionKey()))
+//                                .findFirst();
+//                System.out.println("After findfirst");
+//                if (!existingHelperStatusOptional.isPresent()) {
                     System.out.println("New helper found!!! " + helperStatus.getId().getName());
-//                    currentSecret.addHelpersAsync(new ArrayList<>(Arrays.asList(helperStatus.getId())));
-//                    currentSecret.processAddHelpersAsync(new ArrayList<>(Arrays.asList(helperStatus.getId())), false);
-                    currentSecret.addRecoveredHelper((HelperStatusImpl) helperStatus);
+                    currentSecret.clearOneHelper(helperStatus.getId());
+                System.out.println("Removed " + helperStatus.getId().getName() + " before adding as recovered helper");
+                currentSecret.addRecoveredHelper((HelperStatusImpl) helperStatus);
                     System.out.println("Added Helper successfully");
                     System.out.println("Check2: " + currentSecret.getHelperStatuses().contains(helperStatus));
-                } else {
-                    System.out.println("Helper " + helperStatus.getId().getName() + " is already present in the " +
-                            "currentSecret");
-                }
+
+                    // Restore Sharer's LibIdentity
+                LibState.getInstance().setMyHelperAndSharerId(LibState.getInstance().getMeSharer().getMyLibId());
+//                } else {
+//                    System.out.println("Helper " + helperStatus.getId().getName() + " is already present in the " +
+//                            "currentSecret");
+//                }
 
             }
             // Declare that this secret has recovered!

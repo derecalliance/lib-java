@@ -12,7 +12,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
 public class LibState {
+    Logger logger = LoggerFactory.getLogger(this.getClass().getName());
     final double minPercentOfSharesForConfirmation = 0.5;
     final int minNumberOfHelpersForSendingShares = 1;
     final int minNumberOfHelpersForRecovery = 2;
@@ -41,17 +46,19 @@ public class LibState {
     public HashMap<ByteString, DeRecIdentity> messageHashToIdentityMap = new HashMap();
     public HashMap<Integer, DeRecIdentity> publicKeyIdToIdentityMap = new HashMap();
     public void printMessageHashToIdentityMap() {
-        System.out.println("printMessageHashToIdentityMap");
+        logger.debug("printMessageHashToIdentityMap");
         for (ByteString key : messageHashToIdentityMap.keySet()) {
-            System.out.println("Key: " + key + " -> " + messageHashToIdentityMap.get(key));
+            logger.debug("Key: " + key + " -> " + messageHashToIdentityMap.get(key));
         }
+        logger.debug("---- End of printMessageHashToIdentityMap ----");
     }
 
     public void printPublicKeyIdToIdentityMap() {
-        System.out.println("printPublicKeyIdToIdentityMap");
+        logger.debug("printPublicKeyIdToIdentityMap");
         for (Integer key : publicKeyIdToIdentityMap.keySet()) {
-            System.out.println("Public Key ID: " + key + " -> " + publicKeyIdToIdentityMap.get(key));
+            logger.debug("Public Key ID: " + key + " -> " + publicKeyIdToIdentityMap.get(key));
         }
+        logger.debug("---- End of printPublicKeyIdToIdentityMap ----");
     }
 
     public void registerPublicKeyId(Integer publicKeyId, DeRecIdentity deRecIdentity) {
@@ -122,6 +129,11 @@ public class LibState {
 //    }
     public void init(String uri) {
 //        cryptoMain();
+
+        logger.debug("Debug log");
+        logger.info("Info log");
+        logger.trace("Trace log");
+        logger.error("Error log");
         if (!httpServerStarted) {
             try {
                 startHttpServer(new URI(uri));
@@ -197,5 +209,9 @@ public class LibState {
 
     public synchronized void setMeHelper(HelperImpl meHelper) {
         this.meHelper = meHelper;
+    }
+
+    public synchronized void setMyHelperAndSharerId(LibIdentity libIdentity) {
+        this.myHelperAndSharerId = libIdentity;
     }
 }

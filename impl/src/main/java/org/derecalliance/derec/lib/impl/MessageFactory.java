@@ -3,6 +3,7 @@ package org.derecalliance.derec.lib.impl;
 //import org.derecalliance.derec.api.DeRecMessage;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Timestamp;
 //import org.derecalliance.derec.lib.Share;
 import org.derecalliance.derec.lib.api.DeRecHelperStatus;
@@ -15,7 +16,9 @@ import java.time.Instant;
 import java.util.*;
 import java.util.function.Consumer;
 
- class MessageFactory {
+import static org.derecalliance.derec.lib.impl.MessageParser.printDeRecMessage;
+
+class MessageFactory {
      static Derecmessage.DeRecMessage createHelperMessage(
              DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId,
              Consumer<Derecmessage.DeRecMessage.HelperMessageBody.Builder> messageSetter) {
@@ -166,7 +169,7 @@ import java.util.function.Consumer;
                 senderId, receiverId, secretId,
                 builder -> builder.setStoreShareRequestMessage(storeShareRequestMessage)
         );
-        MessageParser.printDeRecMessage(deRecMessage, "Sending messsage ");
+        printDeRecMessage(deRecMessage, "Sending messsage ");
         return deRecMessage;
     }
 
@@ -309,6 +312,13 @@ import java.util.function.Consumer;
 
     public static byte[] getPackagedBytes(int publicKeyId, byte[] serializedDeRecMessage, boolean isSharer,
                                           DeRecSecret.Id secretId, DeRecIdentity receiverId) {
+        try {
+            Derecmessage.DeRecMessage msg = Derecmessage.DeRecMessage.parseFrom(serializedDeRecMessage);
+            printDeRecMessage(msg, "Sending ");
+        } catch (InvalidProtocolBufferException e) {
+            throw new RuntimeException(e);
+        }
+
         final boolean useRealCryptoLib = false;
         if (useRealCryptoLib) {
 //            String publicEncryptionKey = "";

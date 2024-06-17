@@ -18,6 +18,8 @@ import com.google.protobuf.Timestamp;
 //import org.derecalliance.derec.lib.Version;
 //import org.derecalliance.derec.lib.utils.UuidUtils;
 import org.derecalliance.derec.protobuf.Storeshare;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.derecalliance.derec.lib.impl.utils.MiscUtils.*;
 import static org.derecalliance.derec.lib.impl.utils.MiscUtils.writeToByteArrayOutputStream;
@@ -33,6 +35,8 @@ public class SecretImpl implements DeRecSecret {
 
         boolean isRecovering;
         TreeMap<Integer, VersionImpl> versionsMap;  // Semantically, this is the keepList from the sharer's side
+
+        Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
         private static DeRecSecret.Id generateId(String description) {
             try {
@@ -100,6 +104,9 @@ public class SecretImpl implements DeRecSecret {
                 long fakeNonce = 1111L; // This API should include nonce per
                 LibState.getInstance().messageHashToIdentityMap.put(ByteString.copyFrom(helperId.getPublicEncryptionKeyDigest()),
                         helperId);
+                logger.debug("Added my helper " + helperId.getName() + " to messageHashToIdentityMap");
+                LibState.getInstance().printMessageHashToIdentityMap();
+
                 // helper id that is scanned from the QR code
                 var helperStatus = new HelperStatusImpl(this, helperId, fakeNonce);
                 if (shouldStartPairing == true) {
@@ -349,6 +356,14 @@ public class SecretImpl implements DeRecSecret {
         return helperStatus.orElse(null);
     }
 
+    /**
+     * This is called when we finish recovering, so that we can clear the helper who helped us recover, and replace
+     * them with their original self.
+     */
+    public void clearOneHelper(DeRecIdentity helperId) {
+            helperStatuses.remove((HelperStatusImpl) getHelperStatusById(helperId));
+    }
+
     public void removeVersionFromKeepList(Integer versionNumber) {
             deleteVersion(versionNumber);
     }
@@ -447,6 +462,19 @@ public class SecretImpl implements DeRecSecret {
                         LibState.getInstance().getMeSharer().getMyLibId().getSignaturePublicKey().getBytes());
                 baos.write(intToByteArray(LibState.getInstance().getMeSharer().getMyLibId().getPublicSignatureKeyId()));
 
+
+                // publicKeyId -> helper's publicEncryptionKey mapping
+                // Write the publicKeyIdToIdentityMap map so that when we recover, we can reinstantiate the
+                // free-helpers that we didn't pair with during the recovery process
+                // We just write the publicKeyId -> helper's publicKey. While restoring we create the map based on the
+                // helpers's publicKey.
+                baos.write(intToByteArray(LibState.getInstance().publicKeyIdToIdentityMap.size())); // map size
+                for (var entry : LibState.getInstance().publicKeyIdToIdentityMap.entrySet()) {
+                    baos.write(intToByteArray(entry.getKey()));
+                    writeToByteArrayOutputStream(baos, entry.getValue().getPublicEncryptionKey().getBytes());
+                    logger.debug("Adding entry for publicEncryptionKey as " + entry.getKey() + " -> " + entry.getValue());
+                }
+
                 baos.write(intToByteArray(helperStatuses.size())); // map size
                 for (var helperStatus : helperStatuses) {
                     byte[] serializedHelperId = IdentityImpl.serializeDeRecIdentity(helperStatus.getId());
@@ -471,7 +499,10 @@ public class SecretImpl implements DeRecSecret {
 
         // Has a side effect that it updates the public/private encryption/signature keys in the LibState from the
         // recovered secret.
-        public static SecretImpl parseSecretMessage(DeRecSecret.Id secretId, byte[] serializedSecretMessage) {
+        public static SecretImpl parseSecretMessage(DeRecSecret.Id secretId,
+                                                               byte[] serializedSecretMessage) {
+            Logger staticLogger = LoggerFactory.getLogger(SecretImpl.class.getName());
+
             try {
                 System.out.println("In parseSec message size: " + serializedSecretMessage.length);
                 Storeshare.Secret secretMessage = Storeshare.Secret.parseFrom(serializedSecretMessage);
@@ -495,7 +526,20 @@ public class SecretImpl implements DeRecSecret {
                 String signaturePublicKey = new String(readByteArrayFromByteArrayInputStream(bais));
                 int publicSignatureKeyId = readIntFromByteArrayInputStream(bais);
 
-                System.out.println("Read keys");
+                staticLogger.debug("Read keys");
+
+                // Read publicKeyId -> helper's publicEncryptionKey mapping
+                HashMap<String, Integer> helperPublicEncryptionKeyToPublicKeyIdMap = new HashMap<>();
+                int pubKeyMapSize = readIntFromByteArrayInputStream(bais);
+                for (int i = 0; i < pubKeyMapSize; i++) {
+                    int publicKeyId = readIntFromByteArrayInputStream(bais);
+                    String helperEncPublicKey = new String(readByteArrayFromByteArrayInputStream(bais));
+                    helperPublicEncryptionKeyToPublicKeyIdMap.put(helperEncPublicKey, publicKeyId);
+                    staticLogger.debug("Reading helperPublicEncryptionKeyToPublicKeyIdMap entry from recovered " +
+                            "secret: " +
+                            publicKeyId + " -> " + helperEncPublicKey);
+                }
+
                 // Read helperStatuses
                 int mapSize = readIntFromByteArrayInputStream(bais);
                 ArrayList<DeRecIdentity> helperIds = new ArrayList<DeRecIdentity>();
@@ -507,6 +551,19 @@ public class SecretImpl implements DeRecSecret {
                     DeRecPairingStatus.PairingStatus recoveredPairingStatus =
                             DeRecPairingStatus.PairingStatus.values()[readIntFromByteArrayInputStream(bais)];
                     recoveredPairingStatuses.put(recoveredHelperId, recoveredPairingStatus);
+
+                    // Create an entry in the publicKeyToIdentityMap
+                    staticLogger.debug("Looking for entry in helperPublicEncryptionKeyToPublicKeyIdMap for key: " + recoveredHelperId.getPublicEncryptionKey());
+                    if (helperPublicEncryptionKeyToPublicKeyIdMap.containsKey(recoveredHelperId.getPublicEncryptionKey())) {
+                        LibState.getInstance().registerPublicKeyId(
+                                helperPublicEncryptionKeyToPublicKeyIdMap.get(recoveredHelperId.getPublicEncryptionKey()),
+                                recoveredHelperId);
+                        staticLogger.debug("Added entry to publicKeyIdToIdentityMap for " + recoveredHelperId.getName() + ", publicKeyId = "
+                                + helperPublicEncryptionKeyToPublicKeyIdMap.get(recoveredHelperId.getPublicEncryptionKey()));
+                        LibState.getInstance().printPublicKeyIdToIdentityMap();
+                    } else {
+                        staticLogger.debug("Entry not found for key: " + recoveredHelperId.getPublicEncryptionKey());
+                    }
                 }
 
                 System.out.println("Read helper statuses: count: " + helperIds.size());

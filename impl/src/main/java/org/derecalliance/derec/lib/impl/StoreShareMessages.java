@@ -64,7 +64,7 @@ public class StoreShareMessages {
             try {
                 CommittedDeRecShare cds =
                         new CommittedDeRecShare(Storeshare.CommittedDeRecShare.parseFrom(message.getShare().toByteArray()));
-                System.out.println("In handleStoreShareRequest Committed DeRecShare  is: " + cds.toString());
+//                System.out.println("In handleStoreShareRequest Committed DeRecShare  is: " + cds.toString());
             } catch (InvalidProtocolBufferException ex) {
                 System.out.println("Exception in trying to parse the committed derec share");
                 ex.printStackTrace();

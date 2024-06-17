@@ -7,7 +7,9 @@ import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.derecalliance.derec.lib.api.DeRecSharer;
 import org.derecalliance.derec.lib.api.DeRecStatusNotification;
 
+import java.text.SimpleDateFormat;
 import java.util.Base64;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,6 +26,8 @@ import org.derecalliance.derec.lib.api.DeRecStatusNotification;
 //import org.derecalliance.derec.lib.LibState;
 //import org.derecalliance.derec.lib.Version;
 import org.derecalliance.derec.protobuf.Parameterrange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class SharerImpl implements DeRecSharer {
@@ -38,21 +42,48 @@ public class SharerImpl implements DeRecSharer {
 
         RecoveryContext recoveryContext;
 
-        public SharerImpl(String name, String uri) {
+//    static {
+//        // Format the current time as MM-dd-HH-mm-ss
+//        SimpleDateFormat sdf = new SimpleDateFormat("MM-dd-HH-mm-ss");
+//        String formattedDate = sdf.format(new Date());
+//
+//        // Set the instanceId property with the formatted date
+//        System.setProperty("instanceId", System.getProperty("instanceId") + "-" + formattedDate);
+//
+//        // Debug print to verify
+//        System.out.println("Instance ID: " + System.getProperty("instanceId"));
+//    }
+
+//    private static final Logger logger = LoggerFactory.getLogger(MyApp.class);
+
+    Logger logger = LoggerFactory.getLogger(this.getClass().getName());
+
+
+    public SharerImpl(String name, String uri) {
+//            SimpleDateFormat sdf = new SimpleDateFormat("MM-dd-HH-mm-ss");
+//            String logFileName = name + sdf.format(new Date());
+//            System.setProperty("instanceId", logFileName);
+//            logger.debug("Creating a log file with name: " + logFileName);
+//            System.out.println("Creating a log file with name: " + logFileName);
+
             secretsMap = new ConcurrentHashMap<>();
             parameterRange = Parameterrange.ParameterRange.newBuilder().build();
             // If a LibIdentity is already created for my role as a Helper, reuse that LibIdentity, otherwise create a
             // new LibIdentity
             if (LibState.getInstance().myHelperAndSharerId == null) {
-                System.out.println("SharerImpl: Creating new LibIdentity as a Sharer for " + name);
+                logger.debug("SharerImpl: Creating new LibIdentity as a Sharer for " + name);
                 myLibId = new LibIdentity(name, uri, uri);
                 LibState.getInstance().myHelperAndSharerId = myLibId;
             } else {
-                System.out.println("SharerImpl: Reusing Helper's LibIdentity as a Sharer for " + name);
+                logger.debug("SharerImpl: Reusing Helper's LibIdentity as a Sharer for " + name);
                 myLibId = LibState.getInstance().myHelperAndSharerId;
             }
             LibState.getInstance().messageHashToIdentityMap.put(
                     ByteString.copyFrom(myLibId.getMyId().getPublicEncryptionKeyDigest()), myLibId.getMyId());
+            logger.debug("Added myself (Sharer) " + name + " to messageHashToIdentityMap");
+
+        LibState.getInstance().printMessageHashToIdentityMap();
+
             LibState.getInstance().setMeSharer(this);
             recoveryContext = new RecoveryContext();
             listener = notification -> {};
@@ -61,14 +92,14 @@ public class SharerImpl implements DeRecSharer {
 
         @Override
         public DeRecSecret newSecret(String description, byte[] bytesToProtect, List<DeRecIdentity> helperIds, boolean recovery) {
-            System.out.println("Not implemented\n");
+            logger.debug("Not implemented\n");
             Thread.currentThread().getStackTrace();
             return null;
         }
 
         @Override
         public DeRecSecret newSecret(DeRecSecret.Id secretId, String description, byte[] bytesToProtect, List<DeRecIdentity> helperIds, boolean recovery) {
-            System.out.println("Not implemented\n");
+            logger.debug("Not implemented\n");
             Thread.currentThread().getStackTrace();
             return null;
         }
@@ -86,15 +117,15 @@ public class SharerImpl implements DeRecSharer {
 
         @Override
         public DeRecSecret newSecret(DeRecSecret.Id secretId, String description, byte[] bytesToProtect, boolean recovery) {
-            System.out.println("Not implemented\n");
+            logger.debug("Not implemented\n");
             Thread.currentThread().getStackTrace();
             return null;
         }
 
         @Override
         public DeRecSecret getSecret(DeRecSecret.Id secretId) {
-            System.out.println("\n in getSecret for secretId: " +  Base64.getEncoder().encodeToString(secretId.getBytes()));
-            System.out.println("Secret map is:");
+            logger.debug("\n in getSecret for secretId: " +  Base64.getEncoder().encodeToString(secretId.getBytes()));
+            logger.debug("Secret map is:");
             printSecretsMap();
             return secretsMap.get(secretId);
         }
@@ -106,14 +137,14 @@ public class SharerImpl implements DeRecSharer {
 
         @Override
         public Future<Map<DeRecSecret.Id, List<Integer>>> getSecretIdsAsync(DeRecIdentity helper) {
-            System.out.println("Not implemented\n");
+            logger.debug("Not implemented\n");
             Thread.currentThread().getStackTrace();
             return null;
         }
 
         @Override
         public DeRecSecret recoverSecret(DeRecSecret.Id secretId, int version, List<? extends DeRecIdentity> helpers) {
-            System.out.println("Not implemented\n");
+            logger.debug("Not implemented\n");
             Thread.currentThread().getStackTrace();
             return null;
         }
@@ -131,9 +162,9 @@ public class SharerImpl implements DeRecSharer {
             return myLibId;
         }
         void printSecretsMap() {
-            System.out.println("Secrets Map");
+            logger.debug("Secrets Map");
             for (DeRecSecret.Id secretId : secretsMap.keySet()) {
-                System.out.println("Key: " + Base64.getEncoder().encodeToString(secretId.getBytes()) + " -> " + secretsMap.get(secretId).getDescription());
+                logger.debug("Key: " + Base64.getEncoder().encodeToString(secretId.getBytes()) + " -> " + secretsMap.get(secretId).getDescription());
             }
         }
 
