@@ -35,7 +35,7 @@ public class LibState {
 
 //    private HashMap<Integer, String> myPublicKeys = new HashMap<>();
     private long myNonce;
-    private boolean isRecovering = false;
+//    private boolean isRecovering = false;
 
     LibIdentity myHelperAndSharerId = null;
     SharerImpl meSharer;
@@ -188,13 +188,13 @@ public class LibState {
         this.myNonce = myNonce;
     }
 
-    public synchronized boolean isRecovering() {
-        return isRecovering;
-    }
+//    public synchronized boolean isRecovering() {
+//        return isRecovering;
+//    }
 
-    public synchronized void setRecovering(boolean recovering) {
-        isRecovering = recovering;
-    }
+//    public synchronized void setRecovering(boolean recovering) {
+//        isRecovering = recovering;
+//    }
 
     public synchronized SharerImpl getMeSharer() {
         return meSharer;

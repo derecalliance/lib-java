@@ -142,6 +142,11 @@ public class SharerImpl implements DeRecSharer {
         public LibIdentity getMyLibId() {
             return myLibId;
         }
+
+        public void installRecoveredSecret(SecretImpl secret) {
+            secretsMap.put(secret.getSecretId(), secret);
+        }
+
         void printSecretsMap() {
             logger.debug("Secrets Map");
             for (DeRecSecret.Id secretId : secretsMap.keySet()) {

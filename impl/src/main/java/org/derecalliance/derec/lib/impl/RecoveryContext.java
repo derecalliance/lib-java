@@ -173,6 +173,11 @@ public class RecoveryContext {
     public boolean attemptToRecombine(DeRecSecret.Id secretId, Integer versionNumber) {
         try {
             logger.debug("Attempting to recombine");
+
+            for (var s : LibState.getInstance().getMeSharer().getSecrets()) {
+                logger.debug("***************** Before recovery secret: " + s.getSecretId() + ", recovering: " + s.isRecovering());
+            }
+
             // Find out the current secret (in the context of the recovering user) so that we can populate the
             // version and helpers into that.
             var currentSecret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
@@ -214,79 +219,61 @@ public class RecoveryContext {
             logger.debug("Recovered description " + recoveredSecret.getDescription());
             logger.debug("Recovered versions size " + recoveredSecret.getVersions().size());
 
-            // Add Versions to the currentSecret
-            for ( HashMap.Entry<Integer, ? extends DeRecVersion> entry : recoveredSecret.getVersions().entrySet()) {
-                VersionImpl version = (VersionImpl) entry.getValue();
+            boolean oldCode = false;
+            if (oldCode == true) {
+                // Add Versions to the currentSecret
+                for (HashMap.Entry<Integer, ? extends DeRecVersion> entry : recoveredSecret.getVersions().entrySet()) {
+                    VersionImpl version = (VersionImpl) entry.getValue();
 
-                int vNumber = entry.getKey();
-                if (vNumber != versionNumber) {
-                    logger.debug("******************* ERROR: there's a mismatch of versions in " +
-                            "attemptToRecombine - called with " + versionNumber + ", but recoveredVersion is " + vNumber);
-                } else {
-                    logger.debug("version numberss match");
+                    int vNumber = entry.getKey();
+                    if (vNumber != versionNumber) {
+                        logger.debug("******************* ERROR: there's a mismatch of versions in " +
+                                "attemptToRecombine - called with " + versionNumber + ", but recoveredVersion is " + vNumber);
+                    } else {
+                        logger.debug("version numberss match");
+                    }
+                    logger.debug("Recovered version text: " + new String(version.getProtectedValue()));
+                    logger.debug(version.getSecret().equals(currentSecret) ? "*****VersionImpl has different " +
+                            "secret*****" :
+                            "*****VersionImpl's secret matches currentSecret*****");
+    //                currentSecret.addVersion(versionNumber, version);
+                    currentSecret.updateAsync(versionNumber, version.getProtectedValue());
+                    logger.debug("Added version to currentSecret");
+                    logger.debug("Check: " + new String(currentSecret.getVersionByNumber(versionNumber).getProtectedValue()));
                 }
-                logger.debug("Recovered version text: " + new String(version.getProtectedValue()));
-                logger.debug(version.getSecret().equals(currentSecret) ? "*****VersionImpl has different " +
-                        "secret*****" :
-                        "*****VersionImpl's secret matches currentSecret*****");
-//                currentSecret.addVersion(versionNumber, version);
-                currentSecret.updateAsync(versionNumber, version.getProtectedValue());
-                logger.debug("Added version to currentSecret");
-                logger.debug("Check: " + new String(currentSecret.getVersionByNumber(versionNumber).getProtectedValue()));
-            }
 
-//            logger.debug("Going to Add helperStatuses to the currentSecret");
-//            // Add helperStatuses to the currentSecret
-//            for (DeRecHelperStatus helperStatus : (List<DeRecHelperStatus>)recoveredSecret.getHelperStatuses()) {
-//                logger.debug("Processing helperstatus: " + helperStatus.getId().getName());
-//                // Add this helperStatus to the currentSecret only if it doesn't already exist.
-//                Optional<? extends DeRecHelperStatus> existingHelperStatusOptional =
-//                        currentSecret.getHelperStatuses().stream()
-//                        .filter(hs -> hs.getId().getPublicEncryptionKey().equals(helperStatus.getId().getPublicEncryptionKey()))
-//                        .findFirst();
-//                logger.debug("After findfirst");
-//                if (!existingHelperStatusOptional.isPresent()) {
-//                    logger.debug("New helper found!!! " + helperStatus.getId().getName());
-////                    currentSecret.addHelpersAsync(new ArrayList<>(Arrays.asList(helperStatus.getId())));
-////                    currentSecret.processAddHelpersAsync(new ArrayList<>(Arrays.asList(helperStatus.getId())), false);
-//                    currentSecret.addRecoveredHelper((HelperStatusImpl) helperStatus);
-//                    logger.debug("Added Helper successfully");
-//                    logger.debug("Check2: " + currentSecret.getHelperStatuses().contains(helperStatus));
-//                } else {
-//                    logger.debug("Helper " + helperStatus.getId().getName() + " is already present in the " +
-//                            "currentSecret");
-//                }
-//
-//            }
-
-            logger.debug("Going to Add helperStatuses to the currentSecret");
-            // Add helperStatuses to the currentSecret
-            for (DeRecHelperStatus helperStatus : (List<DeRecHelperStatus>)recoveredSecret.getHelperStatuses()) {
-                logger.debug("Processing helperstatus: " + helperStatus.getId().getName());
-                // Add this helperStatus to the currentSecret only if it doesn't already exist.
-//                Optional<? extends DeRecHelperStatus> existingHelperStatusOptional =
-//                        currentSecret.getHelperStatuses().stream()
-//                                .filter(hs -> hs.getId().getPublicEncryptionKey().equals(helperStatus.getId().getPublicEncryptionKey()))
-//                                .findFirst();
-//                logger.debug("After findfirst");
-//                if (!existingHelperStatusOptional.isPresent()) {
+                logger.debug("Going to Add helperStatuses to the currentSecret");
+                // Add helperStatuses to the currentSecret
+                for (DeRecHelperStatus helperStatus : (List<DeRecHelperStatus>) recoveredSecret.getHelperStatuses()) {
+                    logger.debug("Processing helperstatus: " + helperStatus.getId().getName());
+                    // Add this helperStatus to the currentSecret only if it doesn't already exist.
+    //                Optional<? extends DeRecHelperStatus> existingHelperStatusOptional =
+    //                        currentSecret.getHelperStatuses().stream()
+    //                                .filter(hs -> hs.getId().getPublicEncryptionKey().equals(helperStatus.getId().getPublicEncryptionKey()))
+    //                                .findFirst();
+    //                logger.debug("After findfirst");
+    //                if (!existingHelperStatusOptional.isPresent()) {
                     logger.debug("New helper found!!! " + helperStatus.getId().getName());
                     currentSecret.clearOneHelper(helperStatus.getId());
-                logger.debug("Removed " + helperStatus.getId().getName() + " before adding as recovered helper");
-                currentSecret.addRecoveredHelper((HelperStatusImpl) helperStatus);
+                    logger.debug("Removed " + helperStatus.getId().getName() + " before adding as recovered helper");
+                    currentSecret.addRecoveredHelper((HelperStatusImpl) helperStatus);
                     logger.debug("Added Helper successfully");
                     logger.debug("Check2: " + currentSecret.getHelperStatuses().contains(helperStatus));
 
                     // Restore Sharer's LibIdentity
-                LibState.getInstance().setMyHelperAndSharerId(LibState.getInstance().getMeSharer().getMyLibId());
-//                } else {
-//                    logger.debug("Helper " + helperStatus.getId().getName() + " is already present in the " +
-//                            "currentSecret");
-//                }
+                    LibState.getInstance().setMyHelperAndSharerId(LibState.getInstance().getMeSharer().getMyLibId());
+    //                } else {
+    //                    logger.debug("Helper " + helperStatus.getId().getName() + " is already present in the " +
+    //                            "currentSecret");
+    //                }
 
+                }
+                // Declare that this secret has recovered!
+                currentSecret.setRecovering(false);
+            } else {
+                LibState.getInstance().getMeSharer().installRecoveredSecret(recoveredSecret);
             }
-            // Declare that this secret has recovered!
-            currentSecret.setRecovering(false);
+
 
             // Recalculate the shares for all versions now
             for (DeRecVersion deRecVersion: currentSecret.getVersions().values().stream().toList()) {
@@ -296,6 +283,10 @@ public class RecoveryContext {
 
 
             logger.debug("--- really done---");
+
+            for (var s : LibState.getInstance().getMeSharer().getSecrets()) {
+                logger.debug("***************** Before recovery secret: " + s.getSecretId() + ", recovering: " + s.isRecovering());
+            }
             return true;
         } catch (Exception ex) {
             logger.error("Exception in attemptToRecombine");
