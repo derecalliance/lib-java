@@ -7,6 +7,8 @@ import org.derecalliance.derec.lib.api.DeRecPairingStatus;
 import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.derecalliance.derec.protobuf.Communicationinfo;
 import org.derecalliance.derec.protobuf.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -23,6 +25,7 @@ public class HelperStatusImpl implements DeRecHelperStatus {
     SecretImpl secret;
     DeRecPairingStatus.PairingStatus pairingStatus;
     Instant lastVerificationTime;
+    Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     public HelperStatusImpl(SecretImpl secret, DeRecIdentity id, long nonce) {
         this.id = id;
@@ -59,7 +62,7 @@ public class HelperStatusImpl implements DeRecHelperStatus {
         if (secretId == null) {
             return;
         }
-        System.out.println("My name: " + LibState.getInstance().getMeSharer().getMyLibId().getMyId().getName());
+        logger.debug("My name: " + LibState.getInstance().getMeSharer().getMyLibId().getMyId().getName());
         Communicationinfo.CommunicationInfo communicationInfo = buildCommunicationInfo(LibState.getInstance().getMeSharer().getMyLibId());
 
         PairMessages.sendPairRequestMessage(

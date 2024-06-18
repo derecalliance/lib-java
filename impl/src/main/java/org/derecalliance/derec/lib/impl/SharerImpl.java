@@ -42,30 +42,11 @@ public class SharerImpl implements DeRecSharer {
 
         RecoveryContext recoveryContext;
 
-//    static {
-//        // Format the current time as MM-dd-HH-mm-ss
-//        SimpleDateFormat sdf = new SimpleDateFormat("MM-dd-HH-mm-ss");
-//        String formattedDate = sdf.format(new Date());
-//
-//        // Set the instanceId property with the formatted date
-//        System.setProperty("instanceId", System.getProperty("instanceId") + "-" + formattedDate);
-//
-//        // Debug print to verify
-//        System.out.println("Instance ID: " + System.getProperty("instanceId"));
-//    }
-
-//    private static final Logger logger = LoggerFactory.getLogger(MyApp.class);
 
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
 
     public SharerImpl(String name, String uri) {
-//            SimpleDateFormat sdf = new SimpleDateFormat("MM-dd-HH-mm-ss");
-//            String logFileName = name + sdf.format(new Date());
-//            System.setProperty("instanceId", logFileName);
-//            logger.debug("Creating a log file with name: " + logFileName);
-//            System.out.println("Creating a log file with name: " + logFileName);
-
             secretsMap = new ConcurrentHashMap<>();
             parameterRange = Parameterrange.ParameterRange.newBuilder().build();
             // If a LibIdentity is already created for my role as a Helper, reuse that LibIdentity, otherwise create a

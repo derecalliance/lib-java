@@ -3,8 +3,11 @@ package org.derecalliance.derec.lib.impl;
 import org.derecalliance.derec.lib.api.DeRecVersion;
 import org.derecalliance.derec.lib.api.DeRecHelperStatus;
 import org.derecalliance.derec.lib.api.DeRecSecret;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 import static org.derecalliance.derec.lib.impl.CryptoPrimitives.dummyDecryptSecret;
 import static org.derecalliance.derec.lib.impl.SecretImpl.parseSecretMessage;
@@ -17,6 +20,7 @@ public class RecoveryContext {
     HashMap<DeRecSecret.Id, HashMap<Integer, ArrayList<DeRecHelperStatus>>> getShareRequestsSent;
     HashMap<DeRecSecret.Id, ArrayList<Integer>>  successfullyRecoveredVersions;
     HashMap<DeRecSecret.Id, HashMap<Integer, HashMap<DeRecHelperStatus, CommittedDeRecShare>>> retrievedCommittedDeRecShares;
+    Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     RecoveryContext() {
         recoverableShares = new HashMap<>();
@@ -33,86 +37,114 @@ public class RecoveryContext {
         }
     }
 
-    public void helperHasVersions(DeRecSecret.Id secretId, DeRecHelperStatus helperStatus, ArrayList<Integer> versionNumbers) {
-        addSecretToRecoveryContext(secretId);
-        System.out.println("in helperHasVersions: secretId: " + secretId + ", Helper: " + helperStatus.getId().getName() + ", Versions: " + versionNumbers);
-        for (Integer versionNumber: versionNumbers) {
-            if (!recoverableShares.get(secretId).containsKey(versionNumber)) {
-                recoverableShares.get(secretId).put(versionNumber, new ArrayList<>());
-                getShareRequestsSent.get(secretId).put(versionNumber, new ArrayList<>());
-            }
-            if (!recoverableShares.get(secretId).get(versionNumber).contains(helperStatus)) {
-                recoverableShares.get(secretId).get(versionNumber).add(helperStatus);
+    public void sendGetShareRequestsForUnrecoveredSecrets(SecretImpl dummySecretForRecovering) {
+        for (var secretId : recoverableShares.keySet()) {
+            DeRecSecret secretIdToRecover = LibState.getInstance().getMeSharer().getSecret(secretId);
+            if (secretIdToRecover != null || secretIdToRecover.isRecovering()) {
+
+
+            } else {
+                logger.debug("Not processing secret id " + secretId);
             }
         }
-        System.out.println("after processing helperHasVersions, map is: " + this);
     }
 
-    public HashMap<Integer, ArrayList<DeRecHelperStatus>> evaluate(DeRecSecret.Id secretId) {
+    public void helperHasVersions(DeRecSecret.Id secretIdToRecover, DeRecHelperStatus helperStatus, ArrayList<Integer> versionNumbers) {
+        addSecretToRecoveryContext(secretIdToRecover);
+        logger.debug("in helperHasVersions: secretIdToRecover: " + secretIdToRecover + ", " +
+                "Helper: " + helperStatus.getId().getName() + ", Versions: " + versionNumbers);
+        for (Integer versionNumber: versionNumbers) {
+            // If this is the first version for this secret id, initialize the recoverableShares and
+            // getShareRequestsSent data structures
+            if (!recoverableShares.get(secretIdToRecover).containsKey(versionNumber)) {
+                recoverableShares.get(secretIdToRecover).put(versionNumber, new ArrayList<>());
+                getShareRequestsSent.get(secretIdToRecover).put(versionNumber, new ArrayList<>());
+            }
+
+            if (!recoverableShares.get(secretIdToRecover).get(versionNumber).contains(helperStatus)) {
+                recoverableShares.get(secretIdToRecover).get(versionNumber).add(helperStatus);
+            }
+        }
+        logger.debug("after processing helperHasVersions, map is: " + this);
+    }
+
+    public HashMap<Integer, ArrayList<DeRecHelperStatus>> evaluate(DeRecSecret.Id recoveringSecretId) {
             HashMap<Integer, ArrayList<DeRecHelperStatus>> recoverableVersions = new HashMap<>();
-            if (recoverableShares.get(secretId) != null) {
+            if (recoverableShares.get(recoveringSecretId) != null) {
                 for (Map.Entry<Integer, ArrayList<DeRecHelperStatus>> versionEntry :
-                        recoverableShares.get(secretId).entrySet()) {
+                        recoverableShares.get(recoveringSecretId).entrySet()) {
                     int versionNumber = versionEntry.getKey();
                     // if this version is already recovered, don't re-evaluate it again
-                    if (successfullyRecoveredVersions.get(secretId).contains(versionNumber)) {
+                    if (successfullyRecoveredVersions.get(recoveringSecretId).contains(versionNumber)) {
                         continue;
                     }
                     if (versionEntry.getValue().size() >= LibState.getInstance().getMinNumberOfHelpersForRecovery()) {
-                        recoverableVersions.put(versionNumber, recoverableShares.get(secretId).get(versionNumber));
+                        recoverableVersions.put(versionNumber, recoverableShares.get(recoveringSecretId).get(versionNumber));
                     }
                 }
             }
             return(recoverableVersions);
     }
 
-    public void evaluateAndSendGetShareRequests(DeRecSecret.Id secretId) {
-        HashMap<Integer, ArrayList<DeRecHelperStatus>> sendMap = evaluate(secretId);
-        if (!sendMap.isEmpty()) {
-            System.out.println("*********  in evaluateAndSendGetShareRequests sendMap is present *********");
+    public void evaluateAndSendGetShareRequests(DeRecSecret.Id dummySecretId) {
+        // TODO: Check if the secretId for which we are sending Get Share Request is already recovered. If that's the
+        //  case, don't send the request.
+        DeRecSecret dummySecret = LibState.getInstance().getMeSharer().getSecret(dummySecretId);
+
+        if (dummySecret.isRecovering() == false) {
+            logger.debug("evaluateAndSendGetShareRequests: returning because isRecovering=false: " + dummySecretId);
+            return;
         }
-        for (HashMap.Entry<Integer, ArrayList<DeRecHelperStatus>> sendEntry : sendMap.entrySet()) {
-            int versionNumber = sendEntry.getKey();
-            ArrayList<DeRecHelperStatus> toList = sendEntry.getValue();
 
-            System.out.println("---------------------------------------------In evaluateAndSendGetShareRequests: For " +
-                    "version: " + versionNumber + " toList size: " + toList.size());
-            for (DeRecHelperStatus helperToSend: toList) {
-                System.out.println("HelperToSend: " + helperToSend + ", name: " + helperToSend.getId().getName());
+        for (DeRecSecret.Id recoveringSecretId : recoverableShares.keySet()) {
+            HashMap<Integer, ArrayList<DeRecHelperStatus>> sendMap = evaluate(recoveringSecretId);
+            if (!sendMap.isEmpty()) {
+                logger.debug("*********  in evaluateAndSendGetShareRequests sendMap is present *********");
             }
-            System.out.println("And getShareRequestsSent size is: " + getShareRequestsSent.get(secretId).get(versionNumber).size());
-            for (var hs : getShareRequestsSent.get(secretId).get(versionNumber)) {
-                System.out.println("hs: " + hs + ", name: " + hs.getId().getName());
-            }
-            System.out.println("----");
+            for (HashMap.Entry<Integer, ArrayList<DeRecHelperStatus>> sendEntry : sendMap.entrySet()) {
+                int versionNumber = sendEntry.getKey();
+                ArrayList<DeRecHelperStatus> toList = sendEntry.getValue();
 
-
-            for (DeRecHelperStatus helperToSend: toList) {
-
-                if (!getShareRequestsSent.get(secretId).get(versionNumber).contains(helperToSend)) {
-                    // Remember that we sent this request out, so we don't re-send this request multiple times
-                    // Ideally, this should be done *after* we send the message. But for testing when we run the
-                    // timer every 1 second, there are situations when the httpClient doesn't send a request in 1
-                    // second and that results in sending multiple requests to the same helper.
-                    getShareRequestsSent.get(secretId).get(versionNumber).add(helperToSend);
-
-                    // send GetShare message
-                    GetShareMessages.sendGetShareRequestMessage(
-                            LibState.getInstance().getMeSharer().getMyLibId().getMyId(), helperToSend.getId(),
-                            secretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(),
-                            versionNumber);
-                    System.out.println("Sent sendGetShareRequestMessage to " + helperToSend + ", name: " + helperToSend.getId().getName());
-
+                logger.debug("---------------------------------------------In evaluateAndSendGetShareRequests: For " +
+                        "version: " + versionNumber + " toList size: " + toList.size());
+                for (DeRecHelperStatus helperToSend : toList) {
+                    logger.debug("HelperToSend: " + helperToSend + ", name: " + helperToSend.getId().getName());
                 }
-            }
+                logger.debug("And getShareRequestsSent size is: " + getShareRequestsSent.get(recoveringSecretId).get(versionNumber).size());
+                for (var hs : getShareRequestsSent.get(recoveringSecretId).get(versionNumber)) {
+                    logger.debug("hs: " + hs + ", name: " + hs.getId().getName());
+                }
+                logger.debug("----");
 
-            System.out.println("After processing - In evaluateAndSendGetShareRequests");
-            System.out.println("And getShareRequestsSent size is: " + getShareRequestsSent.get(secretId).get(versionNumber).size());
-            for (var hs : getShareRequestsSent.get(secretId).get(versionNumber)) {
-                System.out.println("hs: " + hs + ", name: " + hs.getId().getName());
-            }
-            System.out.println("----");
 
+                for (DeRecHelperStatus helperToSend : toList) {
+
+                    if (!getShareRequestsSent.get(recoveringSecretId).get(versionNumber).contains(helperToSend)) {
+                        // Remember that we sent this request out, so we don't re-send this request multiple times
+                        // Ideally, this should be done *after* we send the message. But for testing when we run the
+                        // timer every 1 second, there are situations when the httpClient doesn't send a request in 1
+                        // second and that results in sending multiple requests to the same helper.
+                        getShareRequestsSent.get(recoveringSecretId).get(versionNumber).add(helperToSend);
+
+                        // send GetShare message
+                        GetShareMessages.sendGetShareRequestMessage(
+                                LibState.getInstance().getMeSharer().getMyLibId().getMyId(), helperToSend.getId(),
+                                dummySecretId, recoveringSecretId,
+                                LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(),
+                                versionNumber);
+                        logger.debug("Sent sendGetShareRequestMessage to " + helperToSend + ", name: " + helperToSend.getId().getName() + " for recoveringSecretId: " + recoveringSecretId);
+
+                    }
+                }
+
+                logger.debug("After processing - In evaluateAndSendGetShareRequests");
+                logger.debug("And getShareRequestsSent size is: " + getShareRequestsSent.get(recoveringSecretId).get(versionNumber).size());
+                for (var hs : getShareRequestsSent.get(recoveringSecretId).get(versionNumber)) {
+                    logger.debug("hs: " + hs + ", name: " + hs.getId().getName());
+                }
+                logger.debug("----");
+
+            }
         }
     }
 
@@ -124,7 +156,7 @@ public class RecoveryContext {
     public boolean saveRetrievedCommittedDeRecShare(DeRecSecret.Id secretId, Integer versionNumber,
                                                     DeRecHelperStatus helperStatus,
                                                 CommittedDeRecShare committedDeRecShare) {
-        System.out.println("In saveRetrievedCommittedDeRecShare for version # " + versionNumber);
+        logger.debug("In saveRetrievedCommittedDeRecShare for version # " + versionNumber);
         // Store the retrieved committedDeRecShare
         if (!retrievedCommittedDeRecShares.containsKey(secretId)) {
             retrievedCommittedDeRecShares.put(secretId, new HashMap<>());
@@ -140,7 +172,7 @@ public class RecoveryContext {
 
     public boolean attemptToRecombine(DeRecSecret.Id secretId, Integer versionNumber) {
         try {
-            System.out.println("Attempting to recombine");
+            logger.debug("Attempting to recombine");
             // Find out the current secret (in the context of the recovering user) so that we can populate the
             // version and helpers into that.
             var currentSecret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
@@ -148,23 +180,23 @@ public class RecoveryContext {
             // If the secret has already recovered a version, then only allow newer versions to recover
             if (!currentSecret.isRecovering()) {
                 if (versionNumber <= currentSecret.getMaxVersionNumber()) {
-                    System.out.println("VersionImpl " + versionNumber + "is lesser than current version of " + currentSecret.getMaxVersionNumber());
+                    logger.debug("VersionImpl " + versionNumber + "is lesser than current version of " + currentSecret.getMaxVersionNumber());
                     return false;
                 }
             }
 
             DummyMerkledVssFactory merkledVss = new DummyMerkledVssFactory();
-            System.out.println("created merkledVss");
-            System.out.println("Dump 1" + toString());
+            logger.debug("created merkledVss");
+            logger.debug("Dump 1" + toString());
             // TODO Check the merkle paths and uniqueness of the committment here
             byte[] encryptedValueToProtect = merkledVss.combine(secretId.getBytes(), versionNumber,
                     retrievedCommittedDeRecShares.get(secretId).get(versionNumber).values().stream()
                             .map(cds -> cds.getDeRecShare().getEncryptedSecret()).toList());
             if (encryptedValueToProtect == null || encryptedValueToProtect.length == 0) {
-                System.out.println("Combine sent no data");
+                logger.debug("Combine sent no data");
                 return false;
             }
-            System.out.println("created encryptedValueToProtect successfully, len: " + encryptedValueToProtect.length);
+            logger.debug("created encryptedValueToProtect successfully, len: " + encryptedValueToProtect.length);
 
             // Now that we have successfully recombined, remove the shares from retrievedCommittedDeRecShares
             retrievedCommittedDeRecShares.get(secretId).put(versionNumber, new HashMap<>());
@@ -174,13 +206,13 @@ public class RecoveryContext {
             byte[] serializedSecretMessage = dummyDecryptSecret(encryptedValueToProtect);
 
 
-            System.out.println("After dummyDecryptSecret size: " + serializedSecretMessage.length);
+            logger.debug("After dummyDecryptSecret size: " + serializedSecretMessage.length);
             SecretImpl recoveredSecret = parseSecretMessage(secretId, serializedSecretMessage);
-            System.out.println("######################################");
-            System.out.println("RECOVERY DONE for version: " + versionNumber);
-            System.out.println("######################################");
-            System.out.println("Recovered description " + recoveredSecret.getDescription());
-            System.out.println("Recovered versions size " + recoveredSecret.getVersions().size());
+            logger.debug("######################################");
+            logger.debug("RECOVERY DONE for version: " + versionNumber);
+            logger.debug("######################################");
+            logger.debug("Recovered description " + recoveredSecret.getDescription());
+            logger.debug("Recovered versions size " + recoveredSecret.getVersions().size());
 
             // Add Versions to the currentSecret
             for ( HashMap.Entry<Integer, ? extends DeRecVersion> entry : recoveredSecret.getVersions().entrySet()) {
@@ -188,67 +220,67 @@ public class RecoveryContext {
 
                 int vNumber = entry.getKey();
                 if (vNumber != versionNumber) {
-                    System.out.println("******************* ERROR: there's a mismatch of versions in " +
+                    logger.debug("******************* ERROR: there's a mismatch of versions in " +
                             "attemptToRecombine - called with " + versionNumber + ", but recoveredVersion is " + vNumber);
                 } else {
-                    System.out.println("version numberss match");
+                    logger.debug("version numberss match");
                 }
-                System.out.println("Recovered version text: " + new String(version.getProtectedValue()));
-                System.out.println(version.getSecret().equals(currentSecret) ? "*****VersionImpl has different " +
+                logger.debug("Recovered version text: " + new String(version.getProtectedValue()));
+                logger.debug(version.getSecret().equals(currentSecret) ? "*****VersionImpl has different " +
                         "secret*****" :
                         "*****VersionImpl's secret matches currentSecret*****");
 //                currentSecret.addVersion(versionNumber, version);
                 currentSecret.updateAsync(versionNumber, version.getProtectedValue());
-                System.out.println("Added version to currentSecret");
-                System.out.printf("Check: " +  new String(currentSecret.getVersionByNumber(versionNumber).getProtectedValue()));
+                logger.debug("Added version to currentSecret");
+                logger.debug("Check: " + new String(currentSecret.getVersionByNumber(versionNumber).getProtectedValue()));
             }
 
-//            System.out.println("Going to Add helperStatuses to the currentSecret");
+//            logger.debug("Going to Add helperStatuses to the currentSecret");
 //            // Add helperStatuses to the currentSecret
 //            for (DeRecHelperStatus helperStatus : (List<DeRecHelperStatus>)recoveredSecret.getHelperStatuses()) {
-//                System.out.println("Processing helperstatus: " + helperStatus.getId().getName());
+//                logger.debug("Processing helperstatus: " + helperStatus.getId().getName());
 //                // Add this helperStatus to the currentSecret only if it doesn't already exist.
 //                Optional<? extends DeRecHelperStatus> existingHelperStatusOptional =
 //                        currentSecret.getHelperStatuses().stream()
 //                        .filter(hs -> hs.getId().getPublicEncryptionKey().equals(helperStatus.getId().getPublicEncryptionKey()))
 //                        .findFirst();
-//                System.out.println("After findfirst");
+//                logger.debug("After findfirst");
 //                if (!existingHelperStatusOptional.isPresent()) {
-//                    System.out.println("New helper found!!! " + helperStatus.getId().getName());
+//                    logger.debug("New helper found!!! " + helperStatus.getId().getName());
 ////                    currentSecret.addHelpersAsync(new ArrayList<>(Arrays.asList(helperStatus.getId())));
 ////                    currentSecret.processAddHelpersAsync(new ArrayList<>(Arrays.asList(helperStatus.getId())), false);
 //                    currentSecret.addRecoveredHelper((HelperStatusImpl) helperStatus);
-//                    System.out.println("Added Helper successfully");
-//                    System.out.println("Check2: " + currentSecret.getHelperStatuses().contains(helperStatus));
+//                    logger.debug("Added Helper successfully");
+//                    logger.debug("Check2: " + currentSecret.getHelperStatuses().contains(helperStatus));
 //                } else {
-//                    System.out.println("Helper " + helperStatus.getId().getName() + " is already present in the " +
+//                    logger.debug("Helper " + helperStatus.getId().getName() + " is already present in the " +
 //                            "currentSecret");
 //                }
 //
 //            }
 
-            System.out.println("Going to Add helperStatuses to the currentSecret");
+            logger.debug("Going to Add helperStatuses to the currentSecret");
             // Add helperStatuses to the currentSecret
             for (DeRecHelperStatus helperStatus : (List<DeRecHelperStatus>)recoveredSecret.getHelperStatuses()) {
-                System.out.println("Processing helperstatus: " + helperStatus.getId().getName());
+                logger.debug("Processing helperstatus: " + helperStatus.getId().getName());
                 // Add this helperStatus to the currentSecret only if it doesn't already exist.
 //                Optional<? extends DeRecHelperStatus> existingHelperStatusOptional =
 //                        currentSecret.getHelperStatuses().stream()
 //                                .filter(hs -> hs.getId().getPublicEncryptionKey().equals(helperStatus.getId().getPublicEncryptionKey()))
 //                                .findFirst();
-//                System.out.println("After findfirst");
+//                logger.debug("After findfirst");
 //                if (!existingHelperStatusOptional.isPresent()) {
-                    System.out.println("New helper found!!! " + helperStatus.getId().getName());
+                    logger.debug("New helper found!!! " + helperStatus.getId().getName());
                     currentSecret.clearOneHelper(helperStatus.getId());
-                System.out.println("Removed " + helperStatus.getId().getName() + " before adding as recovered helper");
+                logger.debug("Removed " + helperStatus.getId().getName() + " before adding as recovered helper");
                 currentSecret.addRecoveredHelper((HelperStatusImpl) helperStatus);
-                    System.out.println("Added Helper successfully");
-                    System.out.println("Check2: " + currentSecret.getHelperStatuses().contains(helperStatus));
+                    logger.debug("Added Helper successfully");
+                    logger.debug("Check2: " + currentSecret.getHelperStatuses().contains(helperStatus));
 
                     // Restore Sharer's LibIdentity
                 LibState.getInstance().setMyHelperAndSharerId(LibState.getInstance().getMeSharer().getMyLibId());
 //                } else {
-//                    System.out.println("Helper " + helperStatus.getId().getName() + " is already present in the " +
+//                    logger.debug("Helper " + helperStatus.getId().getName() + " is already present in the " +
 //                            "currentSecret");
 //                }
 
@@ -263,10 +295,10 @@ public class RecoveryContext {
             }
 
 
-            System.out.println("--- really done---");
+            logger.debug("--- really done---");
             return true;
         } catch (Exception ex) {
-            System.out.println("Exception in attemptToRecombine");
+            logger.error("Exception in attemptToRecombine");
             ex.printStackTrace();
         }
 

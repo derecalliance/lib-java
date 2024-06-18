@@ -5,6 +5,8 @@ package org.derecalliance.derec.lib.impl;
 import com.google.protobuf.ByteString;
 import org.derecalliance.derec.lib.api.*;
 import org.derecalliance.derec.protobuf.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +21,7 @@ import static org.derecalliance.derec.lib.impl.MessageFactory.getPackagedBytes;
 import static org.derecalliance.derec.lib.impl.ProtobufHttpClient.sendHttpRequest;
 
 class PairMessages {
+    Logger logger = LoggerFactory.getLogger(this.getClass().getName());
      PairMessages() {
 
     }
@@ -62,29 +65,30 @@ class PairMessages {
 
      static void handlePairRequest(int publicKeyId, DeRecIdentity nullSenderId, DeRecIdentity receiverId, byte[] secretId,
                                    Pair.PairRequestMessage message) {
+         Logger staticLogger = LoggerFactory.getLogger(PairMessages.class.getName());
          try {
              // Process PairRequestMessage
-             System.out.println("In handlePairRequest -  sharer's kind is " + message.getSenderKind());
+             staticLogger.debug("In handlePairRequest -  sharer's kind is " + message.getSenderKind());
              if (message.getSenderKind() == Pair.SenderKind.SHARER_RECOVERY) {
-                 System.out.println("******** Sharer is in reocvery!");
+                 staticLogger.debug("******** Sharer is in reocvery!");
              }
 
 
              // Debug - prints contents of the received PairRequest message
 
-             System.out.println("Nonce: " + message.getNonce());
+             staticLogger.debug("Nonce: " + message.getNonce());
              List<Communicationinfo.CommunicationInfoKeyValue> lst =
                      message.getCommunicationInfo().getCommunicationInfoEntriesList();
              for (int i = 0; i < lst.size(); i++) {
                  Communicationinfo.CommunicationInfoKeyValue entry = lst.get(i);
-                 System.out.println("key: " + entry.getKey() + ", Val: " + entry.getStringValue());
+                 staticLogger.debug("key: " + entry.getKey() + ", Val: " + entry.getStringValue());
              }
 
              // Validation checks
              boolean validNonce =
                      LibState.getInstance().getMeHelper().validateAndRemoveNonce(message.getNonce());
              if (!validNonce) {
-                 System.out.println("Invalid nonce " + message.getNonce() + " " +
+                 staticLogger.debug("Invalid nonce " + message.getNonce() + " " +
                          "received");
                  return;
              }
@@ -93,14 +97,14 @@ class PairMessages {
              boolean validParameterRange =
                      LibState.getInstance().getMeHelper().validateParameterRange(message.getParameterRange());
              if (!validParameterRange) {
-                 System.out.println("Invalid parameter range received");
+                 staticLogger.debug("Invalid parameter range received");
                  return;
              }
 
              Optional<String> addressValue = extractFromCommunicationInfo("address",
                      message);
              if (!addressValue.isPresent()) {
-                 System.out.println("Could not find address in the PairRequest " +
+                 staticLogger.debug("Could not find address in the PairRequest " +
                          "message");
                  return;
              }
@@ -123,12 +127,31 @@ class PairMessages {
              SharerStatusImpl sharerStatus = new SharerStatusImpl(sharerId.get());
              sharerStatus.setRecovering(message.getSenderKind() == Pair.SenderKind.SHARER_RECOVERY);
              LibState.getInstance().getMeHelper().addSharer(sharerStatus, new DeRecSecret.Id(secretId));
-             System.out.println("added sharer");
+             staticLogger.debug("added sharer");
              LibState.getInstance().getMeHelper().addSecret(sharerStatus, new DeRecSecret.Id(secretId));
-             System.out.println("added secret");
+             staticLogger.debug("added secret");
+
+             if (message.getSenderKind() == Pair.SenderKind.SHARER_RECOVERY) {
+//                 LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.PAIR_INDICATION_RECOVERY, sharerStatus.getId(), new DeRecSecret.Id(secretId), -1);
+                 var uiResponse =
+                         (HelperImpl.NotificationResponse) LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.PAIR_INDICATION_RECOVERY, sharerId.get(), new DeRecSecret.Id(secretId), -1);
+                 staticLogger.debug("Got uiResponse after sending PAIR_INDICATION_RECOVERY notif: " + uiResponse.getReferenceObject());
+                if (uiResponse.getReferenceObject() == null) {
+                    staticLogger.error("Error: got no reference object");
+                    return; // TODO: Handle this better - maybe send a pairing response with an appropriate error code
+                }
+                LibState.getInstance().getMeHelper().registerIdentityReconciliation(sharerId.get().getPublicEncryptionKey(), (SharerStatusImpl) uiResponse.getReferenceObject());
+                LibState.getInstance().getMeHelper().printPublicKeyToLostSharerMap();
+                 if (uiResponse.getResult()) {
+                     staticLogger.debug("Got uiResponse DeRecIdentity: " + uiResponse.getResult());
+                 }
+
+             }
+
+
 
              // Send PairResponse
-             System.out.println("About to send pair response with public signature key: " + LibState.getInstance().getMeHelper().getMyLibId().getSignaturePublicKey());
+             staticLogger.debug("About to send pair response with public signature key: " + LibState.getInstance().getMeHelper().getMyLibId().getSignaturePublicKey());
              sendPairResponseMessage(receiverId, sharerStatus.getId(),
                      new DeRecSecret.Id(secretId), toUri,
                      LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(), result, Pair.SenderKind.HELPER,
@@ -140,16 +163,17 @@ class PairMessages {
                      LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.PAIR_INDICATION,
                              sharerId.get(), new DeRecSecret.Id(secretId), -1);
          } catch (Exception ex) {
-             System.out.println("Exception in handlePairRequest");
+             staticLogger.error("Exception in handlePairRequest");
              ex.printStackTrace();
          }
      }
      static void handlePairResponse(int publicKeyId, DeRecIdentity senderId, DeRecIdentity receiverId, byte[] secretId,
                                     Pair.PairResponseMessage message) {
+         Logger staticLogger = LoggerFactory.getLogger(PairMessages.class.getName());
          try {
-             System.out.println("In handlePairResponse from " + senderId.getName());
+             staticLogger.debug("In handlePairResponse from " + senderId.getName());
              var secret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(new DeRecSecret.Id(secretId));
-             System.out.println("In handlePairResponse - Secret is: " + secret);
+             staticLogger.debug("In handlePairResponse - Secret is: " + secret);
              if (secret != null) {
                  Optional<HelperStatusImpl> match = (Optional<HelperStatusImpl>) secret.getHelperStatuses().stream()
                          .filter(hs -> hs.getId().getPublicEncryptionKey().equals(senderId.getPublicEncryptionKey()))
@@ -157,9 +181,9 @@ class PairMessages {
                  HelperStatusImpl helperStatus = match.get();
                  LibState.getInstance().registerPublicKeyId(publicKeyId, helperStatus.getId());
                  LibState.getInstance().printPublicKeyIdToIdentityMap();
-                 System.out.println("Got signature key: " + message.getPublicSignatureKey() + " for " + helperStatus.getId().getName());
+                 staticLogger.debug("Got signature key: " + message.getPublicSignatureKey() + " for " + helperStatus.getId().getName());
                  helperStatus.getId().setPublicSignatureKey(message.getPublicSignatureKey());
-                 System.out.println("Setting pairing status to Paired for " + helperStatus.getId().getName());
+                 staticLogger.debug("Setting pairing status to Paired for " + helperStatus.getId().getName());
                  helperStatus.setStatus(DeRecPairingStatus.PairingStatus.PAIRED);
                  LibState.getInstance().getMeSharer().deliverNotification(
                  DeRecStatusNotification.StandardNotificationType.HELPER_PAIRED,
@@ -170,13 +194,13 @@ class PairMessages {
              }
 
              if (secret.isRecovering()) {
-                 System.out.println("In handlePairResponse, I am recovering");
+                 staticLogger.debug("In handlePairResponse, I am recovering");
                  sendGetSecretIdsVersionsRequestMessage(
                          receiverId, senderId, new DeRecSecret.Id(secretId),
                          LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId());
              }
          } catch (Exception ex) {
-             System.out.println("Exception in handlePairResponse");
+             staticLogger.error("Exception in handlePairResponse");
              ex.printStackTrace();
          }
      }
@@ -216,7 +240,7 @@ class PairMessages {
 //        for (int i = 0; i < 20; i++) {
 //            System.out.print(deRecMessage.toByteArray()[i] + ", ");
 //        }
-//        System.out.println("");
+//        staticLogger.debug("");
 
 
 
@@ -230,7 +254,7 @@ class PairMessages {
 //        for (int i = 0; i < 20; i++) {
 //            System.out.print(msgBytes[i] + ", ");
 //        }
-//        System.out.println("");
+//        staticLogger.debug("");
 
         sendHttpRequest(toUri, msgBytes);
     }

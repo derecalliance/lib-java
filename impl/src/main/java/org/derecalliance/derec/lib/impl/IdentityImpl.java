@@ -1,6 +1,8 @@
 package org.derecalliance.derec.lib.impl;
 
 import org.derecalliance.derec.lib.api.DeRecIdentity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,6 +28,8 @@ public class IdentityImpl extends DeRecIdentity {
     }
 
     public static byte[] serializeDeRecIdentity(DeRecIdentity identity) throws IOException {
+        Logger staticLogger = LoggerFactory.getLogger(IdentityImpl.class.getName());
+
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             writeToByteArrayOutputStream(baos, identity.getName().getBytes());
@@ -35,12 +39,14 @@ public class IdentityImpl extends DeRecIdentity {
             writeToByteArrayOutputStream(baos, identity.getPublicSignatureKey().getBytes());
             return baos.toByteArray();
         } catch (Exception ex) {
-            System.out.printf("Exception in serializeDeRecIdentity");
+            staticLogger.error("Exception in serializeDeRecIdentity");
             ex.printStackTrace();
             return new byte[0];
         }
     }
     public static DeRecIdentity deserializeDeRecIdentity(byte[] data) throws IOException, ClassNotFoundException {
+        Logger staticLogger = LoggerFactory.getLogger(IdentityImpl.class.getName());
+
         try {
             ByteArrayInputStream bais = new ByteArrayInputStream(data);
             String name = new String(readByteArrayFromByteArrayInputStream(bais));
@@ -50,7 +56,7 @@ public class IdentityImpl extends DeRecIdentity {
             String publicSignatureKey = new String(readByteArrayFromByteArrayInputStream(bais));
             return new DeRecIdentity(name, contact, address, publicEncryptionKey, publicSignatureKey);
         } catch (Exception ex) {
-            System.out.printf("Exception in deserializeDeRecIdentity");
+            staticLogger.error("Exception in deserializeDeRecIdentity");
             ex.printStackTrace();
             return null;
         }

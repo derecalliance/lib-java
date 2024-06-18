@@ -2,6 +2,8 @@ package org.derecalliance.derec.lib.impl;
 
 import com.google.protobuf.ByteString;
 import org.derecalliance.derec.lib.api.DeRecIdentity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.security.KeyPair;
@@ -18,6 +20,7 @@ public class LibIdentity  {
     private String signaturePublicKey;
     private int publicEncryptionKeyId;
     private int publicSignatureKeyId;
+    Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     public LibIdentity(String name, String contact, String address) {
         final boolean useRealCryptoLib = false;
@@ -60,7 +63,7 @@ public class LibIdentity  {
                         publicSignatureKeyId);
             }
         } catch (Exception ex) {
-            System.err.println("Exception in LibIdentity");
+            logger.error("Exception in LibIdentity");
             ex.printStackTrace();
         }
     }
@@ -162,6 +165,7 @@ public class LibIdentity  {
     }
 
     public static int getLast32BitsOfMD5(String input) {
+        Logger staticLogger = LoggerFactory.getLogger(LibIdentity.class.getName());
         try {
             // Create MD5 Hash
             MessageDigest md = MessageDigest.getInstance("MD5");
@@ -178,7 +182,7 @@ public class LibIdentity  {
                     (last4Bytes[2] << 8) & 0x0000FF00 |
                     (last4Bytes[3]) & 0x000000FF;
 //            int result = new BigInteger(1, last4Bytes).intValue();
-            System.out.println("For input " + input + " getLast32BitsOfMD5() generated result " + result);
+            staticLogger.debug("For input " + input + " getLast32BitsOfMD5() generated result " + result);
             return result;
 
         } catch (Exception e) {

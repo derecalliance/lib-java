@@ -10,6 +10,8 @@ import org.derecalliance.derec.lib.api.DeRecHelperStatus;
 import org.derecalliance.derec.lib.api.DeRecIdentity;
 import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.derecalliance.derec.protobuf.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.time.Instant;
@@ -266,29 +268,30 @@ class MessageFactory {
 
      // Verify share
      public static Derecmessage.DeRecMessage createGetShareRequestMessage(
-             DeRecIdentity senderId, DeRecIdentity receiverId,DeRecSecret.Id secretId,
+             DeRecIdentity senderId, DeRecIdentity receiverId,DeRecSecret.Id currentSecretId,
+             DeRecSecret.Id recoveringSecretId,
              int versionNumber) {
          Getshare.GetShareRequestMessage getShareRequestMessage =  Getshare.GetShareRequestMessage.newBuilder()
-                 .setSecretId(ByteString.copyFrom(secretId.getBytes()))
+                 .setSecretId(ByteString.copyFrom(recoveringSecretId.getBytes()))
                  .setShareVersion(versionNumber)
                  .build();
 
          Derecmessage.DeRecMessage deRecMessage = createSharerMessage(
-                 senderId, receiverId, secretId,
+                 senderId, receiverId, currentSecretId,
                  builder -> builder.setGetShareRequestMessage(getShareRequestMessage)
          );
          return deRecMessage;
      }
      public static Derecmessage.DeRecMessage createGetShareResponseMessage(
-             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId,
-             ResultOuterClass.Result result, Storeshare.CommittedDeRecShare committedDeRecShare) {
+             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id currentSecretId,
+             DeRecSecret.Id recoveringSecretId, ResultOuterClass.Result result, Storeshare.CommittedDeRecShare committedDeRecShare) {
          Getshare.GetShareResponseMessage getShareResponseMessage =
                  Getshare.GetShareResponseMessage.newBuilder()
                          .setResult(result)
                          .setCommittedDeRecShare(committedDeRecShare)
                          .build();
 
-         Derecmessage.DeRecMessage deRecMessage = createHelperMessage(senderId, receiverId, secretId,
+         Derecmessage.DeRecMessage deRecMessage = createHelperMessage(senderId, receiverId, currentSecretId,
                  builder -> builder.setGetShareResponseMessage(getShareResponseMessage)
          );
          return deRecMessage;
@@ -368,6 +371,7 @@ class MessageFactory {
     }
 
     public static byte[] parsePackagedBytes(byte[] receivedMessage, boolean verificationNeeded) {
+        Logger staticLogger = LoggerFactory.getLogger(MessageFactory.class.getName());
         ByteBuffer buffer = ByteBuffer.wrap(receivedMessage);
         // Extract the publicKeyId from the first 4 bytes
         int extractedPublicKeyId = buffer.getInt();
@@ -387,7 +391,7 @@ class MessageFactory {
 
         DeRecIdentity peerDeRecIdentity = LibState.getInstance().publicKeyIdToIdentityMap.get(extractedPublicKeyId);
         if (peerDeRecIdentity == null) {
-            System.out.println("Dropping Message: No peerDeRecIdentity found for extractedPublicKeyId: " + extractedPublicKeyId);
+            staticLogger.debug("Dropping Message: No peerDeRecIdentity found for extractedPublicKeyId: " + extractedPublicKeyId);
             LibState.getInstance().printPublicKeyIdToIdentityMap();
             return null;
         }

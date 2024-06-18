@@ -45,6 +45,7 @@ public class LibState {
     // maps sender and receiver sha-384 hashes from incoming messages to sender and receiver DeRecIdentities
     public HashMap<ByteString, DeRecIdentity> messageHashToIdentityMap = new HashMap();
     public HashMap<Integer, DeRecIdentity> publicKeyIdToIdentityMap = new HashMap();
+
     public void printMessageHashToIdentityMap() {
         logger.debug("printMessageHashToIdentityMap");
         for (ByteString key : messageHashToIdentityMap.keySet()) {
@@ -62,10 +63,10 @@ public class LibState {
     }
 
     public void registerPublicKeyId(Integer publicKeyId, DeRecIdentity deRecIdentity) {
-        System.out.println("In registerPublicKeyId, before:");
+        logger.debug("In registerPublicKeyId, before:");
         printPublicKeyIdToIdentityMap();
         publicKeyIdToIdentityMap.put(publicKeyId, deRecIdentity);
-        System.out.println("In registerPublicKeyId, after:");
+        logger.debug("In registerPublicKeyId, after:");
         printPublicKeyIdToIdentityMap();
     }
 
@@ -102,7 +103,7 @@ public class LibState {
 //
 //        String recovered_value = new String(recovered, StandardCharsets.UTF_8);
 //        assert(recovered_value.equals("top_secret"));
-//        System.out.println(recovered_value);
+//        logger.debug(recovered_value);
 //
 //        Object[] enc_key = cryptoImpl.encryptionKeyGen();
 //        byte[] alice_ek = (byte[]) enc_key[0];
@@ -125,7 +126,7 @@ public class LibState {
 //        byte[] plaintext = cryptoImpl.decryptThenVerify(ciphertext, alice_vk, bob_dk);
 //        recovered_value = new String(recovered, StandardCharsets.UTF_8);
 //        assert(recovered_value.equals("top_secret"));
-//        System.out.println(recovered_value);
+//        logger.debug(recovered_value);
 //    }
     public void init(String uri) {
 //        cryptoMain();
@@ -139,7 +140,7 @@ public class LibState {
                 startHttpServer(new URI(uri));
                 httpServerStarted = true;
                 if (getMeSharer() != null) {
-                    System.out.println("Init starting periodic task runner for the sharer");
+                    logger.debug("Init starting periodic task runner for the sharer");
                     PeriodicTaskRunner runner = new PeriodicTaskRunner();
                     runner.startProcessing();
                 }

@@ -44,7 +44,7 @@ public class ProtobufHttpServer {
 //                for (int i = 0; i < 20; i++) {
 //                    System.out.print(msgBytes[i] + ", ");
 //                }
-//                System.out.println("");
+//                staticLogger.debug("");
 
                 exchange.sendResponseHeaders(200, -1);
 
@@ -60,7 +60,7 @@ public class ProtobufHttpServer {
 //                for (int i = 0; i < 20; i++) {
 //                    System.out.print(msg[i] + ", ");
 //                }
-//                System.out.println("");
+//                staticLogger.debug("");
 
                 Derecmessage.DeRecMessage derecmessage =
                         Derecmessage.DeRecMessage.parseFrom(msg);
@@ -70,16 +70,16 @@ public class ProtobufHttpServer {
                 logger.debug("in handle: onlyAcceptPairingMessages=" + onlyAcceptPairingMessages);
 
 //                try {
-//                    System.out.println("hasPairRequest=" +
+//                    logger.debug("hasPairRequest=" +
 //                                    (derecmessage.hasMessageBodies() &&
 //                                            derecmessage.getMessageBodies().hasSharerMessageBodies() &&
 //                                            derecmessage.getMessageBodies().getSharerMessageBodies().getSharerMessageBody(0).hasPairRequestMessage()));
 //
-//                    System.out.println("hasPairResponse=" + (derecmessage.hasMessageBodies() &&
+//                    logger.debug("hasPairResponse=" + (derecmessage.hasMessageBodies() &&
 //                            derecmessage.getMessageBodies().hasHelperMessageBodies() &&
 //                            derecmessage.getMessageBodies().getHelperMessageBodies().getHelperMessageBody(0).hasPairResponseMessage()));
 //                } catch(Exception ex) {
-//                    System.out.println("Exception in printing hasPairRequest/Response");
+//                    logger.error("Exception in printing hasPairRequest/Response");
 //                    System.err.println (ex);
 //                }
 
@@ -92,7 +92,7 @@ public class ProtobufHttpServer {
                                         derecmessage.getMessageBodies().hasHelperMessageBodies() &&
                                         derecmessage.getMessageBodies().getHelperMessageBodies().getHelperMessageBody(0).hasPairResponseMessage()))
                         )) {
-//                    System.out.println("going to process the message parser");
+//                    logger.debug("going to process the message parser");
                     MessageParser mp = new MessageParser();
                     mp.parseMessage(publicKeyId, derecmessage);
                 } else {

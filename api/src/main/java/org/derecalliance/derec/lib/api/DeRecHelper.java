@@ -116,6 +116,7 @@ public interface DeRecHelper {
 
 		enum StandardHelperNotificationType implements Type {
 			PAIR_INDICATION, // someone is trying to pair for a particular secret
+			PAIR_INDICATION_RECOVERY, // someone is trying to pair in recovery mode
 			UNPAIR_INDICATION, // someone is unpairing for a particular secret
 			UPDATE_INDICATION, // an update has been received for a secret
 			VERIFY_INDICATION, // a verification request has been received for a secret
@@ -137,6 +138,8 @@ public interface DeRecHelper {
 		 */
 //		@Nullable
 		String getReason();
+		public boolean getResult();
+		public Object getReferenceObject();
 	}
 
 
@@ -147,7 +150,7 @@ public interface DeRecHelper {
 //							   byte[] committedDeRecShareBytes);
 	DeRecHelper.Notification newNotification(DeRecHelper.Notification.Type type, DeRecIdentity sharerId,
 											 DeRecSecret.Id secretId, int versionNumber);
-	DeRecHelper.NotificationResponse newNotificationResponse(boolean result, String reason);
+	DeRecHelper.NotificationResponse newNotificationResponse(boolean result, String reason, Object o);
 
 	/**
 	 * Get a list of all protected items known to this helper
