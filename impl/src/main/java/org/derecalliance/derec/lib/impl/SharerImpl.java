@@ -158,6 +158,11 @@ public class SharerImpl implements DeRecSharer {
             return recoveryContext;
         }
 
+        public void removeSecret(DeRecSecret.Id secretId) {
+//            SecretImpl secretToRemove = (SecretImpl) getSecret(secretId);
+            secretsMap.remove(secretId);
+        }
+
         public void deliverNotification(StatusNotificationImpl notification) {
             listener.accept(notification);
         }

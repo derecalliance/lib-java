@@ -131,7 +131,7 @@ public class GetShareMessages {
         try {
             staticLogger.debug("In handleGetShareResponse from " + senderId.getName());
             var secret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
-            staticLogger.debug("In handleGetShareResponse - Secret is: " + secret);
+            staticLogger.debug("In handleGetShareResponse - Secret is: " + secret.getDescription());
             staticLogger.debug("Result: " + message.getResult().getStatus().toString());
             CommittedDeRecShare committedDeRecShare = new CommittedDeRecShare(message.getCommittedDeRecShare());
             staticLogger.debug("Version: " + committedDeRecShare.getDeRecShare().version);
@@ -154,11 +154,15 @@ public class GetShareMessages {
                     LibState.getInstance().getMeSharer().getRecoveryContext().saveRetrievedCommittedDeRecShare(
                     secretId, versionNumber,  helperStatusOptional.get(), committedDeRecShare);
             if (success) {
+                DeRecSecret.Id recoveredSecretId = committedDeRecShare.getDeRecShare().getSecretId();
+                SecretImpl recoveredSecret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(recoveredSecretId);
+
                 staticLogger.debug("Sending RECOVERY_COMPLETE notification");
+                staticLogger.debug("  for secret: " + recoveredSecret.getDescription() + ", version: " + recoveredSecret.getVersionByNumber(versionNumber).getVersionNumber());
                 LibState.getInstance().getMeSharer().deliverNotification(DeRecStatusNotification.StandardNotificationType.RECOVERY_COMPLETE,
                         DeRecStatusNotification.NotificationSeverity.NORMAL,
                         "Recovery complete",
-                        secret, secret.getVersionByNumber(versionNumber), null);
+                        recoveredSecret, recoveredSecret.getVersionByNumber(versionNumber), null);
             }
         } catch (Exception ex) {
             staticLogger.error("Exception in handleGetShareResponse");

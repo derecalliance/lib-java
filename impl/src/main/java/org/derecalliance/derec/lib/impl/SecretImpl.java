@@ -303,8 +303,10 @@ public class SecretImpl implements DeRecSecret {
 
         @Override
         public void close() {
-            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
+//            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+//            Thread.currentThread().getStackTrace();
+            // TODO: unpair with helpers and gracefully the secret
+            LibState.getInstance().getMeSharer().removeSecret(this.getSecretId());
         }
         public String debugStr() {
             String str = "";
