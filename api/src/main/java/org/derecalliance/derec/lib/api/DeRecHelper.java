@@ -145,6 +145,11 @@ public interface DeRecHelper {
 
 	String getPublicEncryptionKey();
 	int getPublicEncryptionKeyId();
+	String getPublicSignatureKey();
+
+	//TODO: remove these 2 methods
+	String getPrivateEncryptionKey();
+	String getPrivateSignatureKey();
 
 //	DeRecHelper.Share newShare(DeRecSecret.Id secretId, int versionNumber, DeRecHelper.SharerStatus sharerStatus,
 //							   byte[] committedDeRecShareBytes);

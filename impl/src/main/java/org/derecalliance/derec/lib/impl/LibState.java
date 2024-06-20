@@ -1,6 +1,7 @@
 package org.derecalliance.derec.lib.impl;
 
 import com.google.protobuf.ByteString;
+import org.derecalliance.derec.crypto.DerecCryptoImpl;
 import org.derecalliance.derec.lib.api.*;
 import org.derecalliance.derec.lib.api.DeRecHelper;
 import org.derecalliance.derec.lib.api.DeRecSharer;
@@ -9,6 +10,7 @@ import org.derecalliance.derec.lib.api.DeRecSharer;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 
@@ -24,6 +26,8 @@ public class LibState {
     final int minNumberOfHelpersForConfirmingShareReceipt = 3;
     public final int thresholdToMarkHelperRefused = 20;
     public final int thresholdToMarkHelperFailed = 60;
+    final boolean useRealCryptoLib = true; // TODO: remove this (useCryptoLib)
+    private DerecCryptoImpl derecCryptoImpl = new DerecCryptoImpl();
 
 
     ProtobufHttpServer hServer = null;
@@ -49,7 +53,7 @@ public class LibState {
     public void printMessageHashToIdentityMap() {
         logger.debug("printMessageHashToIdentityMap");
         for (ByteString key : messageHashToIdentityMap.keySet()) {
-            logger.debug("Key: " + key + " -> " + messageHashToIdentityMap.get(key));
+            logger.debug("Key: " + Base64.getEncoder().encodeToString(key.toByteArray()) + " -> " +  messageHashToIdentityMap.get(key));
         }
         logger.debug("---- End of printMessageHashToIdentityMap ----");
     }
@@ -214,5 +218,9 @@ public class LibState {
 
     public synchronized void setMyHelperAndSharerId(LibIdentity libIdentity) {
         this.myHelperAndSharerId = libIdentity;
+    }
+
+    public DerecCryptoImpl getDerecCryptoImpl() {
+        return derecCryptoImpl;
     }
 }

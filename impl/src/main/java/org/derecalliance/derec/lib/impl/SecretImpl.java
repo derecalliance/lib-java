@@ -110,13 +110,14 @@ public class SecretImpl implements DeRecSecret {
 
                 // helper id that is scanned from the QR code
                 var helperStatus = new HelperStatusImpl(this, helperId, fakeNonce);
+                this.helperStatuses.add(helperStatus);
                 if (shouldStartPairing == true) {
                     helperStatus.startPairing(this.id, helperStatus.getId(), fakeNonce);
                 }
                 if (shouldStartPairing == false) {
                     logger.debug("Helper status found: " + helperStatus.toString());
                 }
-                this.helperStatuses.add(helperStatus);
+
             });
             return null;
         }

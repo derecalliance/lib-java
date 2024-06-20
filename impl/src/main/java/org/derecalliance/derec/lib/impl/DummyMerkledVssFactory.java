@@ -10,11 +10,9 @@ public class DummyMerkledVssFactory {
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     public List<byte[]> split(byte[] secretId, int versionNumber, byte[] bytesToProtect, int count, int threshold) {
-        // public List<byte[]> share(byte[] id, int version, byte[] secret, int count, int threshold);
-        final boolean useRealCryptoLib = false;
-        if (useRealCryptoLib) {
-             // return share(secretId, versionNumber, bytesToProtect, count, threshold); //TODO: uncomment this (useCryptoLib)
-            return new ArrayList<>();
+        if (LibState.getInstance().useRealCryptoLib) {
+              return LibState.getInstance().getDerecCryptoImpl().share(secretId, versionNumber, bytesToProtect, count,
+                    threshold);
         } else {
             ArrayList<byte[]> ret = new ArrayList<byte[]>();
             for (int i = 0; i < count; i++) {
@@ -31,11 +29,9 @@ public class DummyMerkledVssFactory {
             return null;
         }
         try {
-            final boolean useRealCryptoLib = false;
-            if (useRealCryptoLib) {
-                // return recover(secretId, versionNumber, shares) //TODO: uncomment this (useCryptoLib)
+            if (LibState.getInstance().useRealCryptoLib) {
+                 return LibState.getInstance().getDerecCryptoImpl().recover(secretId, versionNumber, shares);
                 // TODO: if the recover is unsuccessful, recover() may return null -- this needs to be handled
-                return ("hello").getBytes();
             } else {
                 return shares.get(0);
             }

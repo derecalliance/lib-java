@@ -50,10 +50,23 @@ public class ProtobufHttpServer {
 
                 int publicKeyId = MessageFactory.extractPublicKeyIdFromPackagedBytes(msgBytes);
                 logger.info("After extractPublicKeyIdFromPackagedBytes(), publicKeyId is: " + publicKeyId);
-                byte[] msg = MessageFactory.parsePackagedBytes(msgBytes, true);
+                byte[] msg = null;
+                try {
+                    msg = MessageFactory.parsePackagedBytes(msgBytes, true);
+                } catch (Exception ex) {
+                    logger.error("Exception in MessageFactory.parsePackagedBytes  with verificationNeeded = true. " +
+                            "msgBytes: " + msgBytes, ex);
+                }
+                logger.debug("After parsePackagedBytes with verificationNeeded=true, msg = " + msg);
                 if (msg == null) {
                     onlyAcceptPairingMessages = true;
+                    try {
                     msg = MessageFactory.parsePackagedBytes(msgBytes, false);
+                    } catch (Exception ex) {
+                        logger.error("Exception in MessageFactory.parsePackagedBytes with verificationNeeded = false." +
+                                " msgBytes: " + msgBytes, ex);
+                    }
+                    logger.debug("After parsePackagedBytes with verificationNeeded=false, msg = " + msg);
                 }
 
 //                System.out.print("------ after parsePackagedBytes bytes: ");

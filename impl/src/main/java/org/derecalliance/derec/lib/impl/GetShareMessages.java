@@ -26,7 +26,8 @@ public class GetShareMessages {
         Logger staticLogger = LoggerFactory.getLogger(GetShareMessages.class.getName());
         Derecmessage.DeRecMessage deRecMessage = createGetShareRequestMessage(senderId, receiverId, currentSecretId,
                 recoveringSecretId, shareVersion);
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, currentSecretId, receiverId);
+        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, currentSecretId,
+                receiverId, true);
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         staticLogger.debug("***** In sendGetShareRequestMessage sending GetShareRequest to " + receiverId.getName() +
                 " for version " + shareVersion);
@@ -46,7 +47,7 @@ public class GetShareMessages {
         staticLogger.debug("Generated response: ");
         MessageParser.printDeRecMessage(deRecMessage, "Sending messsage ");
         byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, currentSecretId,
-                receiverId);
+                receiverId, true);
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }

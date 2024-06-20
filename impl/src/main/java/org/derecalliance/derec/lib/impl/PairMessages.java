@@ -245,7 +245,7 @@ class PairMessages {
 
 
 
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId);
+        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId, false);
 
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
 
@@ -275,7 +275,7 @@ class PairMessages {
                 result, senderKind, publicSignatureKey,
                 communicationInfo, nonce, parameterRange);
 
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId);
+        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId, false);
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         sendHttpRequest(toUri, msgBytes);
     }

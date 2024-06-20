@@ -30,7 +30,7 @@ public class VerifyShareMessages {
             int versionNumber, byte[] nonce) {
         Derecmessage.DeRecMessage deRecMessage = createVerifyShareRequestMessage(senderId, receiverId, secretId,
                 versionNumber, nonce);
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId);
+        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId, true);
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
@@ -45,7 +45,7 @@ public class VerifyShareMessages {
                 result, versionNumber, nonce, hash);
         staticLogger.debug("Generated sendVerifyShareResponseMessage: ");
         MessageParser.printDeRecMessage(deRecMessage, "Sending sendVerifyShareResponseMessage ");
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId);
+        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId, true);
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }

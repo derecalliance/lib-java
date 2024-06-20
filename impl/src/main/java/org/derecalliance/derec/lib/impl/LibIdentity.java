@@ -23,25 +23,24 @@ public class LibIdentity  {
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     public LibIdentity(String name, String contact, String address) {
-        final boolean useRealCryptoLib = false;
         try {
-            if (useRealCryptoLib) {
-//                Object[] encryptionKeyPair;
-//                Object[] signatureKeyPair;
-//
-//                encryptionKeyPair = encryptionKeyGen(); //TODO: uncomment this (useCryptoLib)
-//                String encryptionPrivateKey = Base64.getEncoder().encodeToString(((byte[]) encryptionKeyPair[1]));
-//                String encryptionPublicKey = Base64.getEncoder().encodeToString(((byte[]) encryptionKeyPair[0]));
-//                int publicEncryptionKeyId = getLast32BitsOfMD5(encryptionPublicKey);
-//
-//                signatureKeyPair = signatureKeyGen(); //TODO: uncomment this (useCryptoLib)
-//                String signaturePrivateKey = Base64.getEncoder().encodeToString(((byte[]) signatureKeyPair[1]));
-//                String signaturePublicKey = Base64.getEncoder().encodeToString(((byte[]) signatureKeyPair[0]));
-//                int publicSignatureKeyId = getLast32BitsOfMD5(signaturePublicKey);
-//
-//                setVariables(name, contact, address, encryptionPrivateKey, encryptionPublicKey,
-//                        signaturePrivateKey, signaturePublicKey, publicEncryptionKeyId,
-//                        publicSignatureKeyId);
+            if (LibState.getInstance().useRealCryptoLib) {
+                Object[] encryptionKeyPair;
+                Object[] signatureKeyPair;
+
+                encryptionKeyPair = LibState.getInstance().getDerecCryptoImpl().encryptionKeyGen();
+                String encryptionPrivateKey = Base64.getEncoder().encodeToString(((byte[]) encryptionKeyPair[1]));
+                String encryptionPublicKey = Base64.getEncoder().encodeToString(((byte[]) encryptionKeyPair[0]));
+                int publicEncryptionKeyId = getLast32BitsOfMD5(encryptionPublicKey);
+
+                signatureKeyPair = LibState.getInstance().getDerecCryptoImpl().signatureKeyGen();
+                String signaturePrivateKey = Base64.getEncoder().encodeToString(((byte[]) signatureKeyPair[1]));
+                String signaturePublicKey = Base64.getEncoder().encodeToString(((byte[]) signatureKeyPair[0]));
+                int publicSignatureKeyId = getLast32BitsOfMD5(signaturePublicKey);
+
+                setVariables(name, contact, address, encryptionPrivateKey, encryptionPublicKey,
+                        signaturePrivateKey, signaturePublicKey, publicEncryptionKeyId,
+                        publicSignatureKeyId);
             } else {
                 KeyPair encryptionKeyPair;
                 KeyPair signatureKeyPair;

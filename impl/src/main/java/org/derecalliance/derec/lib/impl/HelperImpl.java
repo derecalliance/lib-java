@@ -161,6 +161,21 @@ public class HelperImpl implements DeRecHelper {
     }
 
     @Override
+    public String getPublicSignatureKey() {
+        return myLibId.getSignaturePublicKey();
+    }
+
+    @Override
+    public String getPrivateEncryptionKey() {
+        return myLibId.getEncryptionPrivateKey();
+    }
+
+    @Override
+    public String getPrivateSignatureKey() {
+        return myLibId.getSignaturePrivateKey();
+    }
+
+    @Override
     public List<? extends ShareImpl> getShares() {
         return recdCommittedDeRecShares.values().stream()  // Stream of Map<DeRecSecret.Id, Map<Integer, ShareImpl>>
                 .flatMap(secretMap -> secretMap.values().stream()) // Stream of Map<Integer, ShareImpl>

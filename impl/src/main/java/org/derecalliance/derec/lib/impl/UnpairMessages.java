@@ -27,7 +27,7 @@ public class UnpairMessages {
         Derecmessage.DeRecMessage deRecMessage = createUnpairRequestMessage(senderId, receiverId, secretId,
                 memo);
 
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId);
+        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId, true);
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
@@ -43,7 +43,7 @@ public class UnpairMessages {
                 result);
         staticLogger.debug("Generated response: ");
         MessageParser.printDeRecMessage(deRecMessage, "Sending messsage ");
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId);
+        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId, true);
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
