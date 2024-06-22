@@ -366,9 +366,11 @@ class MessageFactory {
 
             byte[] signedBytes;
             if (shouldSign) {
-                staticLogger.debug("About to signThenEncrypt");
+                staticLogger.debug("About to signThenEncrypt with privateSignatureKey=" + privateSignatureKey + ", " +
+                        "publicEncryptionKey=" + publicEncryptionKey);
                 signedBytes = LibState.getInstance().getDerecCryptoImpl().signThenEncrypt(serializedDeRecMessage,
-                        privateSignatureKey.getBytes(), publicEncryptionKey.getBytes(), publicSignatureKey.getBytes());
+                        Base64.getDecoder().decode(privateSignatureKey),
+                        Base64.getDecoder().decode(publicEncryptionKey), Base64.getDecoder().decode(publicSignatureKey));
             } else {
                 staticLogger.debug("About to encrypt only - not signing");
                 signedBytes = LibState.getInstance().getDerecCryptoImpl().encrypt(serializedDeRecMessage, publicEncryptionKey.getBytes());
@@ -417,9 +419,9 @@ class MessageFactory {
         } else if (verificationNeeded && (peerDeRecIdentity != null)) {
             staticLogger.debug("About to decryptThenVerify");
             decryptedAndVerifiedMsg = LibState.getInstance().getDerecCryptoImpl().decryptThenVerify(remainingBytes,
-                    peerDeRecIdentity.getPublicSignatureKey().getBytes()
-                    , LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey().getBytes(),
-                    LibState.getInstance().myHelperAndSharerId.getEncryptionPublicKey().getBytes());
+                    Base64.getDecoder().decode(peerDeRecIdentity.getPublicSignatureKey())
+                    , Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey()),
+                    Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPublicKey()));
         } else {
             staticLogger.debug("About to decrypt only - not verifying");
             decryptedAndVerifiedMsg = LibState.getInstance().getDerecCryptoImpl().decrypt(remainingBytes,

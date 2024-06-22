@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 public class LibState {
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
     final double minPercentOfSharesForConfirmation = 0.5;
-    final int minNumberOfHelpersForSendingShares = 1;
+    final int minNumberOfHelpersForSendingShares = 2;
     final int minNumberOfHelpersForRecovery = 2;
     final int minNumberOfHelpersForConfirmingShareReceipt = 3;
     public final int thresholdToMarkHelperRefused = 20;
