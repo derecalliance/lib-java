@@ -4,7 +4,8 @@ module org.derecalliance.derec.lib.impl {
     requires jdk.httpserver;
     requires java.net.http;
     requires org.slf4j;
-    requires cryptography;
+    requires derec.crypto.bridge;
+//    requires cryptography;
     exports org.derecalliance.derec.lib.impl;
     provides org.derecalliance.derec.lib.api.SharerFactory with org.derecalliance.derec.lib.impl.SharerFactoryImpl;
     provides org.derecalliance.derec.lib.api.HelperFactory with org.derecalliance.derec.lib.impl.HelperFactoryImpl;
