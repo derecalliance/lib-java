@@ -22,6 +22,17 @@ import static org.derecalliance.derec.lib.impl.MessageParser.logger;
 import static org.derecalliance.derec.lib.impl.MessageParser.printDeRecMessage;
 
 class MessageFactory {
+
+    public class ParsedResult {
+        final byte[] decryptedMessage;
+        final boolean onlyAcceptPairingMessages;
+
+        public ParsedResult(byte[] decryptedMessage, boolean onlyAcceptPairingMessages) {
+            this.decryptedMessage = decryptedMessage;
+            this.onlyAcceptPairingMessages = onlyAcceptPairingMessages;
+        }
+    }
+
      static Derecmessage.DeRecMessage createHelperMessage(
              DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId,
              Consumer<Derecmessage.DeRecMessage.HelperMessageBody.Builder> messageSetter) {
@@ -370,10 +381,11 @@ class MessageFactory {
                         "publicEncryptionKey=" + publicEncryptionKey);
                 signedBytes = LibState.getInstance().getDerecCryptoImpl().signThenEncrypt(serializedDeRecMessage,
                         Base64.getDecoder().decode(privateSignatureKey),
-                        Base64.getDecoder().decode(publicEncryptionKey), Base64.getDecoder().decode(publicSignatureKey));
+                        Base64.getDecoder().decode(publicEncryptionKey));
             } else {
                 staticLogger.debug("About to encrypt only - not signing");
-                signedBytes = LibState.getInstance().getDerecCryptoImpl().encrypt(serializedDeRecMessage, publicEncryptionKey.getBytes());
+                signedBytes = LibState.getInstance().getDerecCryptoImpl().encrypt(serializedDeRecMessage,
+                        Base64.getDecoder().decode(publicEncryptionKey));
             }
 
             byte[] withPublicKeyId = ByteBuffer.allocate(4 + signedBytes.length)
@@ -400,16 +412,6 @@ class MessageFactory {
         byte[] remainingBytes = new byte[receivedMessage.length - 4];
         System.arraycopy(receivedMessage, 4, remainingBytes, 0, remainingBytes.length);
 
-//        if (! verificationNeeded) {
-//            if (LibState.getInstance().useRealCryptoLib) {
-//                // TODO: call decrypt here (useCryptoLib)
-//                // decrypt()
-//                return remainingBytes;
-//            } else {
-//                return remainingBytes;
-//            }
-//        }
-
         DeRecIdentity peerDeRecIdentity = LibState.getInstance().publicKeyIdToIdentityMap.get(extractedPublicKeyId);
         byte[] decryptedAndVerifiedMsg;
         if (verificationNeeded && (peerDeRecIdentity == null)) {
@@ -420,13 +422,11 @@ class MessageFactory {
             staticLogger.debug("About to decryptThenVerify");
             decryptedAndVerifiedMsg = LibState.getInstance().getDerecCryptoImpl().decryptThenVerify(remainingBytes,
                     Base64.getDecoder().decode(peerDeRecIdentity.getPublicSignatureKey())
-                    , Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey()),
-                    Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPublicKey()));
+                    , Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey()));
         } else {
             staticLogger.debug("About to decrypt only - not verifying");
             decryptedAndVerifiedMsg = LibState.getInstance().getDerecCryptoImpl().decrypt(remainingBytes,
-                    LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey().getBytes(),
-                    LibState.getInstance().myHelperAndSharerId.getEncryptionPublicKey().getBytes());
+                   Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey()));
         }
 
 //        if (peerDeRecIdentity == null) {
@@ -454,6 +454,67 @@ class MessageFactory {
 //            // parse these bytes now
 //            return remainingBytes;
 //        }
+    }
+
+    public static boolean parseAndProcessPackagedBytes(byte[] receivedMessage) {
+        Logger staticLogger = LoggerFactory.getLogger(MessageFactory.class.getName());
+        ByteBuffer buffer = ByteBuffer.wrap(receivedMessage);
+        // Extract the publicKeyId from the first 4 bytes
+        int extractedPublicKeyId = buffer.getInt();
+
+        byte[] remainingBytes = new byte[receivedMessage.length - 4];
+        System.arraycopy(receivedMessage, 4, remainingBytes, 0, remainingBytes.length);
+
+        DeRecIdentity peerDeRecIdentity = LibState.getInstance().publicKeyIdToIdentityMap.get(extractedPublicKeyId);
+        byte[] decryptedAndVerifiedMsg;
+
+        byte[] decryptedMsg;
+        Derecmessage.DeRecMessage derecmessage = null;
+        boolean onlyAcceptPairingMessages = true;
+        try {
+            staticLogger.debug("About to decrypt (no verify)");
+            decryptedMsg = LibState.getInstance().getDerecCryptoImpl().decrypt(remainingBytes,
+                    Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey()));
+            if (decryptedMsg != null) {
+                try {
+                    derecmessage = Derecmessage.DeRecMessage.parseFrom(decryptedMsg);
+                } catch (Exception ex) {
+                    staticLogger.debug("About to decryptThenVerify");
+                    decryptedMsg = LibState.getInstance().getDerecCryptoImpl().decryptThenVerify(remainingBytes,
+                            Base64.getDecoder().decode(peerDeRecIdentity.getPublicSignatureKey())
+                            , Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey()));
+                    if (decryptedMsg != null) {
+                        try {
+                            derecmessage = Derecmessage.DeRecMessage.parseFrom(decryptedMsg);
+                            onlyAcceptPairingMessages = false;
+                        } catch (Exception ex2) {
+                            staticLogger.debug("Exception in decryptThenVerify", ex2);
+                        }
+                    }
+                }
+            }
+        } catch (Exception ex3) {
+            staticLogger.debug("Exception in decryptThenVerify", ex3);
+        }
+
+        if (!onlyAcceptPairingMessages ||
+                (onlyAcceptPairingMessages &&
+                        ((derecmessage.hasMessageBodies() &&
+                                derecmessage.getMessageBodies().hasSharerMessageBodies() &&
+                                derecmessage.getMessageBodies().getSharerMessageBodies().getSharerMessageBody(0).hasPairRequestMessage()) ||
+                                (derecmessage.hasMessageBodies() &&
+                                        derecmessage.getMessageBodies().hasHelperMessageBodies() &&
+                                        derecmessage.getMessageBodies().getHelperMessageBodies().getHelperMessageBody(0).hasPairResponseMessage()))
+                )) {
+            MessageParser mp = new MessageParser();
+            mp.parseMessage(extractedPublicKeyId, derecmessage);
+            return true;
+        } else {
+            // Drop the message
+            logger.info("Handle: could not verify the signature on the received message, and it " +
+                    "wasn't a pairing message. Dropping");
+        }
+        return false;
     }
 
     public static int extractPublicKeyIdFromPackagedBytes(byte[] receivedMessage) {
