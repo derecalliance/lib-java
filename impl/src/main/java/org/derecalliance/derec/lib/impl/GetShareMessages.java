@@ -156,7 +156,7 @@ public class GetShareMessages {
                     secretId, versionNumber,  helperStatusOptional.get(), committedDeRecShare);
             if (success) {
                 DeRecSecret.Id recoveredSecretId = committedDeRecShare.getDeRecShare().getSecretId();
-                SecretImpl recoveredSecret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(recoveredSecretId);
+                SecretImpl recoveredSecret = (SecretImpl) LibState.getInstance().getMeSharer().getRecoveredState().getSecret(recoveredSecretId);
 
                 staticLogger.debug("Sending RECOVERY_COMPLETE notification");
                 staticLogger.debug("  for secret: " + recoveredSecret.getDescription() + ", version: " + recoveredSecret.getVersionByNumber(versionNumber).getVersionNumber());

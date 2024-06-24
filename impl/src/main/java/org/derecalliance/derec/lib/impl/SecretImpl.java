@@ -466,6 +466,15 @@ public class SecretImpl implements DeRecSecret {
                         LibState.getInstance().getMeSharer().getMyLibId().getSignaturePublicKey().getBytes());
                 baos.write(intToByteArray(LibState.getInstance().getMeSharer().getMyLibId().getPublicSignatureKeyId()));
 
+                logger.debug("+++++++++++++ start");
+                logger.debug("createSecretMessage encoded keys as follows");
+                logger.debug("getEncryptionPrivateKey: " + LibState.getInstance().getMeSharer().getMyLibId().getEncryptionPrivateKey());
+                logger.debug("getEncryptionPublicKey: " + LibState.getInstance().getMeSharer().getMyLibId().getEncryptionPublicKey());
+                logger.debug("getPublicEncryptionKeyId(): " + LibState.getInstance().getMeSharer().getMyLibId().getPublicEncryptionKeyId());
+                logger.debug("getSignaturePrivateKey(): " + LibState.getInstance().getMeSharer().getMyLibId().getSignaturePrivateKey());
+                logger.debug("getSignaturePublicKey(): " + LibState.getInstance().getMeSharer().getMyLibId().getSignaturePublicKey());
+                logger.debug("getPublicSignatureKeyId(): " + LibState.getInstance().getMeSharer().getMyLibId().getPublicSignatureKeyId());
+                logger.debug("+++++++++++++ end");
 
                 // publicKeyId -> helper's publicEncryptionKey mapping
                 // Write the publicKeyIdToIdentityMap map so that when we recover, we can reinstantiate the
@@ -503,7 +512,7 @@ public class SecretImpl implements DeRecSecret {
 
         // Has a side effect that it updates the public/private encryption/signature keys in the LibState from the
         // recovered secret.
-        public static SecretImpl parseSecretMessage(DeRecSecret.Id secretId,
+        public static SecretImpl parseSecretMessage(RecoveredState recoveredState, DeRecSecret.Id secretId,
                                                                byte[] serializedSecretMessage) {
             Logger staticLogger = LoggerFactory.getLogger(SecretImpl.class.getName());
 
@@ -515,6 +524,7 @@ public class SecretImpl implements DeRecSecret {
 
                 ByteArrayInputStream bais = new ByteArrayInputStream(secretMessage.getSecretData().toByteArray());
 
+                // Read details of the secret (id, description, version number, etc.)
                 byte[] idBytes = readByteArrayFromByteArrayInputStream(bais);
                 String description = new String(readByteArrayFromByteArrayInputStream(bais));
                 boolean isRecovering = bais.read() == 1 ? true : false;
@@ -523,6 +533,7 @@ public class SecretImpl implements DeRecSecret {
 
                 staticLogger.debug("Read protected value of size: " + protectedValue.length);
 
+                // Read sharer's original keys (when they were in normal mode)
                 String encryptionPrivateKey = new String(readByteArrayFromByteArrayInputStream(bais));
                 String encryptionPublicKey = new String(readByteArrayFromByteArrayInputStream(bais));
                 int publicEncryptionKeyId = readIntFromByteArrayInputStream(bais);
@@ -530,15 +541,26 @@ public class SecretImpl implements DeRecSecret {
                 String signaturePublicKey = new String(readByteArrayFromByteArrayInputStream(bais));
                 int publicSignatureKeyId = readIntFromByteArrayInputStream(bais);
 
+                staticLogger.debug("+++++++++++++ start");
+                staticLogger.debug("parseSecretMessage decoded keys as follows");
+                staticLogger.debug("getEncryptionPrivateKey: " + encryptionPrivateKey);
+                staticLogger.debug("getEncryptionPublicKey: " + encryptionPublicKey);
+                staticLogger.debug("getPublicEncryptionKeyId(): " + publicEncryptionKeyId);
+                staticLogger.debug("getSignaturePrivateKey(): " + signaturePrivateKey);
+                staticLogger.debug("getSignaturePublicKey(): " + signaturePublicKey);
+                staticLogger.debug("getPublicSignatureKeyId(): " + publicSignatureKeyId);
+                staticLogger.debug("+++++++++++++ end");
+
                 staticLogger.debug("Read keys");
 
                 // Read publicKeyId -> helper's publicEncryptionKey mapping
-                HashMap<String, Integer> helperPublicEncryptionKeyToPublicKeyIdMap = new HashMap<>();
+//                HashMap<String, Integer> helperPublicEncryptionKeyToPublicKeyIdMap = new HashMap<>();
                 int pubKeyMapSize = readIntFromByteArrayInputStream(bais);
                 for (int i = 0; i < pubKeyMapSize; i++) {
                     int publicKeyId = readIntFromByteArrayInputStream(bais);
                     String helperEncPublicKey = new String(readByteArrayFromByteArrayInputStream(bais));
-                    helperPublicEncryptionKeyToPublicKeyIdMap.put(helperEncPublicKey, publicKeyId);
+                    recoveredState.registerHelperPublicEncryptionKeyAndPublicKeyId(helperEncPublicKey, publicKeyId);
+//                    helperPublicEncryptionKeyToPublicKeyIdMap.put(helperEncPublicKey, publicKeyId);
                     staticLogger.debug("Reading helperPublicEncryptionKeyToPublicKeyIdMap entry from recovered " +
                             "secret: " +
                             publicKeyId + " -> " + helperEncPublicKey);
@@ -558,21 +580,23 @@ public class SecretImpl implements DeRecSecret {
 
                     // Create an entry in the publicKeyToIdentityMap
                     staticLogger.debug("Looking for entry in helperPublicEncryptionKeyToPublicKeyIdMap for key: " + recoveredHelperId.getPublicEncryptionKey());
-                    if (helperPublicEncryptionKeyToPublicKeyIdMap.containsKey(recoveredHelperId.getPublicEncryptionKey())) {
-                        LibState.getInstance().registerPublicKeyId(
-                                helperPublicEncryptionKeyToPublicKeyIdMap.get(recoveredHelperId.getPublicEncryptionKey()),
-                                recoveredHelperId);
-                        staticLogger.debug("Added entry to publicKeyIdToIdentityMap for " + recoveredHelperId.getName() + ", publicKeyId = "
-                                + helperPublicEncryptionKeyToPublicKeyIdMap.get(recoveredHelperId.getPublicEncryptionKey()));
-                        LibState.getInstance().printPublicKeyIdToIdentityMap();
-                    } else {
-                        staticLogger.debug("Entry not found for key: " + recoveredHelperId.getPublicEncryptionKey());
-                    }
+
+                    // TODO TODORECOVER move this to when user clicks on "recovery complete" button
+//                    if (helperPublicEncryptionKeyToPublicKeyIdMap.containsKey(recoveredHelperId.getPublicEncryptionKey())) {
+//                        LibState.getInstance().registerPublicKeyId(
+//                                helperPublicEncryptionKeyToPublicKeyIdMap.get(recoveredHelperId.getPublicEncryptionKey()),
+//                                recoveredHelperId);
+//                        staticLogger.debug("Added entry to publicKeyIdToIdentityMap for " + recoveredHelperId.getName() + ", publicKeyId = "
+//                                + helperPublicEncryptionKeyToPublicKeyIdMap.get(recoveredHelperId.getPublicEncryptionKey()));
+//                        LibState.getInstance().printPublicKeyIdToIdentityMap();
+//                    } else {
+//                        staticLogger.debug("Entry not found for key: " + recoveredHelperId.getPublicEncryptionKey());
+//                    }
                 }
 
                 staticLogger.debug("Read helper statuses: count: " + helperIds.size());
                 for (DeRecIdentity helperId : helperIds) {
-                    System.out.print("Helper Id: " + helperId.getName() + ", contact: " + helperId.getContact() + ", " +
+                    staticLogger.debug("Helper Id: " + helperId.getName() + ", contact: " + helperId.getContact() + ", " +
                             "address: " + helperId.getAddress());
                     staticLogger.debug(" - with pairing status: " + recoveredPairingStatuses.get(helperId));
                 }
@@ -580,10 +604,13 @@ public class SecretImpl implements DeRecSecret {
                 staticLogger.debug("Calling newSecret with idBytes " + idBytes );
                 staticLogger.debug("desc: " + description);
 
+                // Now that we have read the details of the secret and the associated helpers, create a new secret
+                // using this information
                 SecretImpl secret = new SecretImpl(new DeRecSecret.Id(idBytes), description, null,
                         new ArrayList<>(), false);
                 staticLogger.debug("Created new secret");
 
+                // Add helpers to the newly created secret
                 secret.processAddHelpersAsync(helperIds, false);
                 staticLogger.debug("Added helper ids without pairing to the secret");
 
@@ -595,6 +622,7 @@ public class SecretImpl implements DeRecSecret {
                     }
                 }
 
+                // Add versions to the newly created secret
                 VersionImpl version = new VersionImpl(secret, protectedValue, versionNumber);
                 staticLogger.debug("Created new version");
                 byte[] v1pv = version.getProtectedValue();
@@ -606,14 +634,31 @@ public class SecretImpl implements DeRecSecret {
 
 //            LibState.getInstance().getMeSharer().getMyLibId().setKeys(encryptionPrivateKey, encryptionPublicKey, signaturePrivateKey,
 //                    signaturePublicKey, publicEncryptionKeyId, publicSignatureKeyId);
-                LibState.getInstance().getMeSharer().getMyLibId().setVariables(
-                        LibState.getInstance().getMeSharer().getMyLibId().getMyId().getName(),
+                LibIdentity libIdentity = new LibIdentity(LibState.getInstance().getMeSharer().getMyLibId().getMyId().getName(),
                         LibState.getInstance().getMeSharer().getMyLibId().getMyId().getContact(),
                         LibState.getInstance().getMeSharer().getMyLibId().getMyId().getAddress(),
                         encryptionPrivateKey, encryptionPublicKey, signaturePrivateKey,
                         signaturePublicKey, publicEncryptionKeyId, publicSignatureKeyId);
+                recoveredState.setSharerIdentity(libIdentity);
+
+                // TODO TODORECOVER move this to when user clicks on "recovery complete" button
+//                LibState.getInstance().getMeSharer().getMyLibId().setVariables(
+//                        LibState.getInstance().getMeSharer().getMyLibId().getMyId().getName(),
+//                        LibState.getInstance().getMeSharer().getMyLibId().getMyId().getContact(),
+//                        LibState.getInstance().getMeSharer().getMyLibId().getMyId().getAddress(),
+//                        encryptionPrivateKey, encryptionPublicKey, signaturePrivateKey,
+//                        signaturePublicKey, publicEncryptionKeyId, publicSignatureKeyId);
 
                 staticLogger.debug("Updated keys in Libstate");
+
+                staticLogger.debug("######################################");
+                staticLogger.debug("RECOVERY DONE for version: " + versionNumber);
+                staticLogger.debug("######################################");
+                staticLogger.debug("Recovered description " + secret.getDescription());
+                staticLogger.debug("Recovered versions size " + secret.getVersions().size());
+
+                // Add this secret to the recoveredState
+                recoveredState.addSecret(secret);
                 return secret;
             } catch (Exception ex) {
                 staticLogger.error("Exception in parseSecretMessage");

@@ -56,7 +56,7 @@ class MessageParser {
                         logger.info(" - encryptionKey: " + encryptionKey);
 
                     } else if (body.hasGetShareRequestMessage()) {
-                        logger.info("GetShareRequestMessage for secretId: " + body.getGetShareRequestMessage().getSecretId() + ", " +
+                        logger.info("GetShareRequestMessage for secretId: " + Base64.getEncoder().encodeToString(body.getGetShareRequestMessage().getSecretId().toByteArray()) + ", " +
                                 "version number: " + body.getGetShareRequestMessage().getShareVersion());
                     } else if (body.hasGetSecretIdsVersionsRequestMessage()) {
                         logger.info("GetSecretIdsVersionsRequestMessage");

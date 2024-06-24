@@ -117,6 +117,15 @@ public interface DeRecSharer {
     DeRecSecret recoverSecret(DeRecSecret.Id secretId, int version, List<? extends DeRecIdentity> helpers);
 
     /**
+     * The application tells the library that the user has agreed that recovery is complete using this API.
+     * This updates the state of the Sharer in the library to revert to normal mode, using their original keys and
+     * communicating with their restored helpers in the contexts of their recovered secrets.
+     *
+     * @param recoverySecretId the id of the dummy secret used for pairing during recovery mode
+     */
+    void recoveryComplete(DeRecSecret.Id recoverySecretId);
+
+    /**
      * Provide a "listener" for status and lifecycle event notifications relating to this sharer's secrets.
      * <p>
      * Note: More than one listener may be provided by composition such as:

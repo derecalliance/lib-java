@@ -66,7 +66,7 @@ public class VersionImpl implements DeRecVersion {
                 .filter(obj -> obj.isConfirmed() == true)
                 .count();
         if (protectedCount >= (sharesMap.size() * LibState.getInstance().getMinPercentOfSharesForConfirmation()) &&
-                sharesMap.size() > LibState.getInstance().getMinNumberOfHelpersForSendingShares()) {
+                sharesMap.size() >= LibState.getInstance().getMinNumberOfHelpersForSendingShares()) {
             isProtectedStatus = true;
         } else {
             isProtectedStatus = false;
