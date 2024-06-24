@@ -39,6 +39,7 @@ public class SecretImpl implements DeRecSecret {
         Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
         private static DeRecSecret.Id generateId(String description) {
+            Logger staticLogger = LoggerFactory.getLogger(SecretImpl.class.getName());
             try {
                 MessageDigest digest = MessageDigest.getInstance("SHA-384");
                 byte[] hash = digest.digest(description.getBytes());
@@ -47,7 +48,7 @@ public class SecretImpl implements DeRecSecret {
                 DeRecSecret.Id id = new DeRecSecret.Id(last16Bytes);
                 return id;
             } catch (Exception ex) {
-                System.out.println("Exception in generateId");
+                staticLogger.error("Exception in generateId");
                 ex.printStackTrace();
                 throw new RuntimeException("Could not generateId");
             }
@@ -81,7 +82,7 @@ public class SecretImpl implements DeRecSecret {
                 }
                 isRecovering = recovery;
             } catch (Exception ex) {
-                System.out.println("Exception in secret constructor");
+                logger.error("Exception in secret constructor");
                 ex.printStackTrace();
             }
         }
@@ -91,7 +92,7 @@ public class SecretImpl implements DeRecSecret {
 
         @Override
         public void addHelpers(List<? extends DeRecIdentity> helperIds) {
-            System.out.println("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
             Thread.currentThread().getStackTrace();
         }
 
@@ -109,19 +110,20 @@ public class SecretImpl implements DeRecSecret {
 
                 // helper id that is scanned from the QR code
                 var helperStatus = new HelperStatusImpl(this, helperId, fakeNonce);
+                this.helperStatuses.add(helperStatus);
                 if (shouldStartPairing == true) {
                     helperStatus.startPairing(this.id, helperStatus.getId(), fakeNonce);
                 }
                 if (shouldStartPairing == false) {
-                    System.out.println("Helper status found: " + helperStatus.toString());
+                    logger.debug("Helper status found: " + helperStatus.toString());
                 }
-                this.helperStatuses.add(helperStatus);
+
             });
             return null;
         }
 
     public void addRecoveredHelper(HelperStatusImpl helperStatus) {
-        System.out.println("########## INSTALLING FREE HELPER: " + helperStatus.getId().getName() + " - " + helperStatus.toString());
+        logger.debug("########## INSTALLING FREE HELPER: " + helperStatus.getId().getName() + " - " + helperStatus.toString());
         helperStatus.setSecret(this);
         this.helperStatuses.add(helperStatus);
     }
@@ -134,24 +136,24 @@ public class SecretImpl implements DeRecSecret {
 
         @Override
         public void removeHelpers(List<? extends DeRecIdentity> helperIds) {
-            System.out.println("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
             Thread.currentThread().getStackTrace();
         }
 
         @Override
         public List<CompletableFuture<? extends DeRecHelperStatus>> removeHelpersAsync(List<? extends DeRecIdentity> helperIds) {
-            System.out.println("In removeHelpersAsync");
+            logger.debug("In removeHelpersAsync");
             for (DeRecIdentity helperId: helperIds) {
-                System.out.println("Removing helper: " + helperId.getName());
+                logger.debug("Removing helper: " + helperId.getName());
                 var toBeRemoved =
                         helperStatuses.stream().filter(hs -> hs.getId().getPublicEncryptionKey().equals(helperId.getPublicEncryptionKey())).findFirst();
                 if (toBeRemoved.isPresent()) {
-                    System.out.println("Found helper to remove: " + toBeRemoved.get().getId().getName());
+                    logger.debug("Found helper to remove: " + toBeRemoved.get().getId().getName());
                     Timer timer = new Timer();
                     TimerTask task = new TimerTask() {
                         @Override
                         public void run() {
-                            System.out.println("Timer expired in Secret");
+                            logger.debug("Timer expired in Secret");
                             helperStatuses.remove(toBeRemoved.get());
                         }
                     };
@@ -161,18 +163,18 @@ public class SecretImpl implements DeRecSecret {
                             toBeRemoved.get().getId(), id,
                             LibState.getInstance().getMeSharer().getMyLibId().getPublicEncryptionKeyId(),
                             "Please unpair with me");
-                    System.out.println("Changing the pairing status from: " + toBeRemoved.get().getStatus());
+                    logger.debug("Changing the pairing status from: " + toBeRemoved.get().getStatus());
                     toBeRemoved.get().setStatus(DeRecPairingStatus.PairingStatus.PENDING_REMOVAL);
                     LibState.getInstance().getMeSharer().deliverNotification(DeRecStatusNotification.StandardNotificationType.HELPER_UNPAIRED,
                             DeRecStatusNotification.NotificationSeverity.NORMAL,
                             "Helper unpaired - " + toBeRemoved.get().getId().getName(),
                             this, null, toBeRemoved.get());
-                    System.out.println("to: " + toBeRemoved.get().getStatus());
+                    logger.debug("to: " + toBeRemoved.get().getStatus());
                     for (VersionImpl version : versionsMap.values()) {
                         version.createShares();
                     }
                 } else {
-                    System.out.println("******* Could not find the helper to remove");
+                    logger.debug("******* Could not find the helper to remove");
                 }
             }
             return null;
@@ -180,28 +182,28 @@ public class SecretImpl implements DeRecSecret {
 
         @Override
         public DeRecVersion update() {
-            System.out.println("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
             Thread.currentThread().getStackTrace();
             return null;
         }
 
         @Override
         public DeRecVersion update(byte[] bytesToProtect) {
-            System.out.println("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
             Thread.currentThread().getStackTrace();
             return null;
         }
 
         @Override
         public DeRecVersion update(byte[] bytesToProtect, String description) {
-            System.out.println("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
             Thread.currentThread().getStackTrace();
             return null;
         }
 
         @Override
         public Future<? extends DeRecVersion> updateAsync() {
-            System.out.println("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
             Thread.currentThread().getStackTrace();
             return null;
         }
@@ -226,7 +228,7 @@ public class SecretImpl implements DeRecSecret {
 
         @Override
         public Future<? extends DeRecVersion> updateAsync(byte[] bytesToProtect, String description) {
-            System.out.println("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
             Thread.currentThread().getStackTrace();
             return null;
         }
@@ -268,21 +270,21 @@ public class SecretImpl implements DeRecSecret {
 
         @Override
         public boolean isAvailable() {
-            System.out.println("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
             Thread.currentThread().getStackTrace();
             return false;
         }
 
         @Override
         public boolean isClosed() {
-            System.out.println("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
             Thread.currentThread().getStackTrace();
             return false;
         }
 
         @Override
         public CompletableFuture<? extends DeRecSecret> closeAsync() {
-            System.out.println("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
             Thread.currentThread().getStackTrace();
             return null;
         }
@@ -302,8 +304,10 @@ public class SecretImpl implements DeRecSecret {
 
         @Override
         public void close() {
-            System.out.println("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
+//            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+//            Thread.currentThread().getStackTrace();
+            // TODO: unpair with helpers and gracefully the secret
+            LibState.getInstance().getMeSharer().removeSecret(this.getSecretId());
         }
         public String debugStr() {
             String str = "";
@@ -319,20 +323,20 @@ public class SecretImpl implements DeRecSecret {
                     .filter(entry -> entry.getValue().isProtected())
                     .max(Map.Entry.comparingByKey());
 
-            System.out.println("Evaluating if versions can be deleted");
+            logger.debug("Evaluating if versions can be deleted");
             if (highestProtectedVersionImpl.isPresent()) {
-                System.out.println("highest protected version number is " + highestProtectedVersionImpl.get().getValue().getVersionNumber());
+                logger.debug("highest protected version number is " + highestProtectedVersionImpl.get().getValue().getVersionNumber());
             }
             ArrayList<Integer> versionsToDelete = new ArrayList<>();
             versionsMap.forEach((versionNumber, versionImpl) -> {
-                System.out.println("Seeing if we can delete version " + versionNumber);
+                logger.debug("Seeing if we can delete version " + versionNumber);
                 if (highestProtectedVersionImpl.isPresent() && versionNumber < highestProtectedVersionImpl.get().getValue().getVersionNumber()) {
                     System.out.printf("Deleting version %d because %d is the highest protected version\n",
                             versionNumber, highestProtectedVersionImpl.get().getKey());
                     versionsToDelete.add(versionNumber);
                 }
             });
-            System.out.println("Versions to be deleted: " + versionsToDelete);
+            logger.debug("Versions to be deleted: " + versionsToDelete);
             versionsToDelete.forEach(this::deleteVersion);
         }
 
@@ -462,6 +466,15 @@ public class SecretImpl implements DeRecSecret {
                         LibState.getInstance().getMeSharer().getMyLibId().getSignaturePublicKey().getBytes());
                 baos.write(intToByteArray(LibState.getInstance().getMeSharer().getMyLibId().getPublicSignatureKeyId()));
 
+                logger.debug("+++++++++++++ start");
+                logger.debug("createSecretMessage encoded keys as follows");
+                logger.debug("getEncryptionPrivateKey: " + LibState.getInstance().getMeSharer().getMyLibId().getEncryptionPrivateKey());
+                logger.debug("getEncryptionPublicKey: " + LibState.getInstance().getMeSharer().getMyLibId().getEncryptionPublicKey());
+                logger.debug("getPublicEncryptionKeyId(): " + LibState.getInstance().getMeSharer().getMyLibId().getPublicEncryptionKeyId());
+                logger.debug("getSignaturePrivateKey(): " + LibState.getInstance().getMeSharer().getMyLibId().getSignaturePrivateKey());
+                logger.debug("getSignaturePublicKey(): " + LibState.getInstance().getMeSharer().getMyLibId().getSignaturePublicKey());
+                logger.debug("getPublicSignatureKeyId(): " + LibState.getInstance().getMeSharer().getMyLibId().getPublicSignatureKeyId());
+                logger.debug("+++++++++++++ end");
 
                 // publicKeyId -> helper's publicEncryptionKey mapping
                 // Write the publicKeyIdToIdentityMap map so that when we recover, we can reinstantiate the
@@ -499,26 +512,28 @@ public class SecretImpl implements DeRecSecret {
 
         // Has a side effect that it updates the public/private encryption/signature keys in the LibState from the
         // recovered secret.
-        public static SecretImpl parseSecretMessage(DeRecSecret.Id secretId,
+        public static SecretImpl parseSecretMessage(RecoveredState recoveredState, DeRecSecret.Id secretId,
                                                                byte[] serializedSecretMessage) {
             Logger staticLogger = LoggerFactory.getLogger(SecretImpl.class.getName());
 
             try {
-                System.out.println("In parseSec message size: " + serializedSecretMessage.length);
+                staticLogger.debug("In parseSec message size: " + serializedSecretMessage.length);
                 Storeshare.Secret secretMessage = Storeshare.Secret.parseFrom(serializedSecretMessage);
-                System.out.println("parsed secretmessage");
-                System.out.println("secret data size: " + secretMessage.getSecretData().size());
+                staticLogger.debug("parsed secretmessage");
+                staticLogger.debug("secret data size: " + secretMessage.getSecretData().size());
 
                 ByteArrayInputStream bais = new ByteArrayInputStream(secretMessage.getSecretData().toByteArray());
 
+                // Read details of the secret (id, description, version number, etc.)
                 byte[] idBytes = readByteArrayFromByteArrayInputStream(bais);
                 String description = new String(readByteArrayFromByteArrayInputStream(bais));
                 boolean isRecovering = bais.read() == 1 ? true : false;
                 int versionNumber = readIntFromByteArrayInputStream(bais);
                 byte[] protectedValue = readByteArrayFromByteArrayInputStream(bais);
 
-                System.out.println("Read protected value of size: " + protectedValue.length);
+                staticLogger.debug("Read protected value of size: " + protectedValue.length);
 
+                // Read sharer's original keys (when they were in normal mode)
                 String encryptionPrivateKey = new String(readByteArrayFromByteArrayInputStream(bais));
                 String encryptionPublicKey = new String(readByteArrayFromByteArrayInputStream(bais));
                 int publicEncryptionKeyId = readIntFromByteArrayInputStream(bais);
@@ -526,15 +541,26 @@ public class SecretImpl implements DeRecSecret {
                 String signaturePublicKey = new String(readByteArrayFromByteArrayInputStream(bais));
                 int publicSignatureKeyId = readIntFromByteArrayInputStream(bais);
 
+                staticLogger.debug("+++++++++++++ start");
+                staticLogger.debug("parseSecretMessage decoded keys as follows");
+                staticLogger.debug("getEncryptionPrivateKey: " + encryptionPrivateKey);
+                staticLogger.debug("getEncryptionPublicKey: " + encryptionPublicKey);
+                staticLogger.debug("getPublicEncryptionKeyId(): " + publicEncryptionKeyId);
+                staticLogger.debug("getSignaturePrivateKey(): " + signaturePrivateKey);
+                staticLogger.debug("getSignaturePublicKey(): " + signaturePublicKey);
+                staticLogger.debug("getPublicSignatureKeyId(): " + publicSignatureKeyId);
+                staticLogger.debug("+++++++++++++ end");
+
                 staticLogger.debug("Read keys");
 
                 // Read publicKeyId -> helper's publicEncryptionKey mapping
-                HashMap<String, Integer> helperPublicEncryptionKeyToPublicKeyIdMap = new HashMap<>();
+//                HashMap<String, Integer> helperPublicEncryptionKeyToPublicKeyIdMap = new HashMap<>();
                 int pubKeyMapSize = readIntFromByteArrayInputStream(bais);
                 for (int i = 0; i < pubKeyMapSize; i++) {
                     int publicKeyId = readIntFromByteArrayInputStream(bais);
                     String helperEncPublicKey = new String(readByteArrayFromByteArrayInputStream(bais));
-                    helperPublicEncryptionKeyToPublicKeyIdMap.put(helperEncPublicKey, publicKeyId);
+                    recoveredState.registerHelperPublicEncryptionKeyAndPublicKeyId(helperEncPublicKey, publicKeyId);
+//                    helperPublicEncryptionKeyToPublicKeyIdMap.put(helperEncPublicKey, publicKeyId);
                     staticLogger.debug("Reading helperPublicEncryptionKeyToPublicKeyIdMap entry from recovered " +
                             "secret: " +
                             publicKeyId + " -> " + helperEncPublicKey);
@@ -554,72 +580,95 @@ public class SecretImpl implements DeRecSecret {
 
                     // Create an entry in the publicKeyToIdentityMap
                     staticLogger.debug("Looking for entry in helperPublicEncryptionKeyToPublicKeyIdMap for key: " + recoveredHelperId.getPublicEncryptionKey());
-                    if (helperPublicEncryptionKeyToPublicKeyIdMap.containsKey(recoveredHelperId.getPublicEncryptionKey())) {
-                        LibState.getInstance().registerPublicKeyId(
-                                helperPublicEncryptionKeyToPublicKeyIdMap.get(recoveredHelperId.getPublicEncryptionKey()),
-                                recoveredHelperId);
-                        staticLogger.debug("Added entry to publicKeyIdToIdentityMap for " + recoveredHelperId.getName() + ", publicKeyId = "
-                                + helperPublicEncryptionKeyToPublicKeyIdMap.get(recoveredHelperId.getPublicEncryptionKey()));
-                        LibState.getInstance().printPublicKeyIdToIdentityMap();
-                    } else {
-                        staticLogger.debug("Entry not found for key: " + recoveredHelperId.getPublicEncryptionKey());
-                    }
+
+                    // TODO TODORECOVER move this to when user clicks on "recovery complete" button
+//                    if (helperPublicEncryptionKeyToPublicKeyIdMap.containsKey(recoveredHelperId.getPublicEncryptionKey())) {
+//                        LibState.getInstance().registerPublicKeyId(
+//                                helperPublicEncryptionKeyToPublicKeyIdMap.get(recoveredHelperId.getPublicEncryptionKey()),
+//                                recoveredHelperId);
+//                        staticLogger.debug("Added entry to publicKeyIdToIdentityMap for " + recoveredHelperId.getName() + ", publicKeyId = "
+//                                + helperPublicEncryptionKeyToPublicKeyIdMap.get(recoveredHelperId.getPublicEncryptionKey()));
+//                        LibState.getInstance().printPublicKeyIdToIdentityMap();
+//                    } else {
+//                        staticLogger.debug("Entry not found for key: " + recoveredHelperId.getPublicEncryptionKey());
+//                    }
                 }
 
-                System.out.println("Read helper statuses: count: " + helperIds.size());
+                staticLogger.debug("Read helper statuses: count: " + helperIds.size());
                 for (DeRecIdentity helperId : helperIds) {
-                    System.out.print("Helper Id: " + helperId.getName() + ", contact: " + helperId.getContact() + ", " +
+                    staticLogger.debug("Helper Id: " + helperId.getName() + ", contact: " + helperId.getContact() + ", " +
                             "address: " + helperId.getAddress());
-                    System.out.println(" - with pairing status: " + recoveredPairingStatuses.get(helperId));
+                    staticLogger.debug(" - with pairing status: " + recoveredPairingStatuses.get(helperId));
                 }
 
-                System.out.println("Calling newSecret with idBytes " + idBytes );
-                System.out.println("desc: " + description);
+                staticLogger.debug("Calling newSecret with idBytes " + idBytes );
+                staticLogger.debug("desc: " + description);
 
+                // Now that we have read the details of the secret and the associated helpers, create a new secret
+                // using this information
                 SecretImpl secret = new SecretImpl(new DeRecSecret.Id(idBytes), description, null,
                         new ArrayList<>(), false);
-                System.out.println("Created new secret");
+                staticLogger.debug("Created new secret");
 
+                // Add helpers to the newly created secret
                 secret.processAddHelpersAsync(helperIds, false);
-                System.out.println("Added helper ids without pairing to the secret");
+                staticLogger.debug("Added helper ids without pairing to the secret");
 
                 for (DeRecIdentity helperId : helperIds) {
                     HelperStatusImpl helperStatus = (HelperStatusImpl) secret.getHelperStatusById(helperId);
                     if (helperStatus.getStatus() == DeRecPairingStatus.PairingStatus.NONE) {
-                        System.out.println("Setting helper status of " + helperStatus.getId().getName() + " to " + recoveredPairingStatuses.get(helperId));
+                        staticLogger.debug("Setting helper status of " + helperStatus.getId().getName() + " to " + recoveredPairingStatuses.get(helperId));
                         helperStatus.setStatus(recoveredPairingStatuses.get(helperId));
                     }
                 }
 
+                // Add versions to the newly created secret
                 VersionImpl version = new VersionImpl(secret, protectedValue, versionNumber);
-                System.out.println("Created new version");
+                staticLogger.debug("Created new version");
                 byte[] v1pv = version.getProtectedValue();
-                System.out.println("v1pv: size " + v1pv.length);
-                System.out.println("v1pv: str " + new String(v1pv));
+                staticLogger.debug("v1pv: size " + v1pv.length);
+                staticLogger.debug("v1pv: str " + new String(v1pv));
 
                 secret.addVersion(versionNumber, version);
-                System.out.println("Added version as version-" + versionNumber);
+                staticLogger.debug("Added version as version-" + versionNumber);
 
 //            LibState.getInstance().getMeSharer().getMyLibId().setKeys(encryptionPrivateKey, encryptionPublicKey, signaturePrivateKey,
 //                    signaturePublicKey, publicEncryptionKeyId, publicSignatureKeyId);
-                LibState.getInstance().getMeSharer().getMyLibId().setVariables(
-                        LibState.getInstance().getMeSharer().getMyLibId().getMyId().getName(),
+                LibIdentity libIdentity = new LibIdentity(LibState.getInstance().getMeSharer().getMyLibId().getMyId().getName(),
                         LibState.getInstance().getMeSharer().getMyLibId().getMyId().getContact(),
                         LibState.getInstance().getMeSharer().getMyLibId().getMyId().getAddress(),
                         encryptionPrivateKey, encryptionPublicKey, signaturePrivateKey,
                         signaturePublicKey, publicEncryptionKeyId, publicSignatureKeyId);
+                recoveredState.setSharerIdentity(libIdentity);
 
-                System.out.println("Updated keys in Libstate");
+                // TODO TODORECOVER move this to when user clicks on "recovery complete" button
+//                LibState.getInstance().getMeSharer().getMyLibId().setVariables(
+//                        LibState.getInstance().getMeSharer().getMyLibId().getMyId().getName(),
+//                        LibState.getInstance().getMeSharer().getMyLibId().getMyId().getContact(),
+//                        LibState.getInstance().getMeSharer().getMyLibId().getMyId().getAddress(),
+//                        encryptionPrivateKey, encryptionPublicKey, signaturePrivateKey,
+//                        signaturePublicKey, publicEncryptionKeyId, publicSignatureKeyId);
+
+                staticLogger.debug("Updated keys in Libstate");
+
+                staticLogger.debug("######################################");
+                staticLogger.debug("RECOVERY DONE for version: " + versionNumber);
+                staticLogger.debug("######################################");
+                staticLogger.debug("Recovered description " + secret.getDescription());
+                staticLogger.debug("Recovered versions size " + secret.getVersions().size());
+
+                // Add this secret to the recoveredState
+                recoveredState.addSecret(secret);
                 return secret;
             } catch (Exception ex) {
-                System.out.printf("Exception in parseSecretMessage");
+                staticLogger.error("Exception in parseSecretMessage");
                 ex.printStackTrace();
                 return null;
             }
         }
 
     public void periodicWorkForSecret() {
-        System.out.println("Processing secret: " + getSecretId());
+        logger.debug("Processing secret: " + getSecretId());
         NavigableMap<Integer, VersionImpl> versions = (NavigableMap<Integer, VersionImpl>) getVersions();
         if (isRecovering()) {
             LibState.getInstance().getMeSharer().getRecoveryContext().evaluateAndSendGetShareRequests(getSecretId());

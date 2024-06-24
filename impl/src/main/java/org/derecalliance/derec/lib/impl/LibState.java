@@ -1,6 +1,7 @@
 package org.derecalliance.derec.lib.impl;
 
 import com.google.protobuf.ByteString;
+import org.derecalliance.derec.crypto.DerecCryptoImpl;
 import org.derecalliance.derec.lib.api.*;
 import org.derecalliance.derec.lib.api.DeRecHelper;
 import org.derecalliance.derec.lib.api.DeRecSharer;
@@ -9,21 +10,25 @@ import org.derecalliance.derec.lib.api.DeRecSharer;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+//import src.DerecCryptoImpl;
 
 
 public class LibState {
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
     final double minPercentOfSharesForConfirmation = 0.5;
-    final int minNumberOfHelpersForSendingShares = 1;
+    final int minNumberOfHelpersForSendingShares = 2;
     final int minNumberOfHelpersForRecovery = 2;
     final int minNumberOfHelpersForConfirmingShareReceipt = 3;
     public final int thresholdToMarkHelperRefused = 20;
     public final int thresholdToMarkHelperFailed = 60;
+    final boolean useRealCryptoLib = true; // TODO: remove this (useCryptoLib)
+    private DerecCryptoImpl derecCryptoImpl = new DerecCryptoImpl();
 
 
     ProtobufHttpServer hServer = null;
@@ -35,7 +40,7 @@ public class LibState {
 
 //    private HashMap<Integer, String> myPublicKeys = new HashMap<>();
     private long myNonce;
-    private boolean isRecovering = false;
+//    private boolean isRecovering = false;
 
     LibIdentity myHelperAndSharerId = null;
     SharerImpl meSharer;
@@ -45,10 +50,11 @@ public class LibState {
     // maps sender and receiver sha-384 hashes from incoming messages to sender and receiver DeRecIdentities
     public HashMap<ByteString, DeRecIdentity> messageHashToIdentityMap = new HashMap();
     public HashMap<Integer, DeRecIdentity> publicKeyIdToIdentityMap = new HashMap();
+
     public void printMessageHashToIdentityMap() {
         logger.debug("printMessageHashToIdentityMap");
         for (ByteString key : messageHashToIdentityMap.keySet()) {
-            logger.debug("Key: " + key + " -> " + messageHashToIdentityMap.get(key));
+            logger.debug("Key: " + Base64.getEncoder().encodeToString(key.toByteArray()) + " -> " +  messageHashToIdentityMap.get(key));
         }
         logger.debug("---- End of printMessageHashToIdentityMap ----");
     }
@@ -62,10 +68,10 @@ public class LibState {
     }
 
     public void registerPublicKeyId(Integer publicKeyId, DeRecIdentity deRecIdentity) {
-        System.out.println("In registerPublicKeyId, before:");
+        logger.debug("In registerPublicKeyId, before:");
         printPublicKeyIdToIdentityMap();
         publicKeyIdToIdentityMap.put(publicKeyId, deRecIdentity);
-        System.out.println("In registerPublicKeyId, after:");
+        logger.debug("In registerPublicKeyId, after:");
         printPublicKeyIdToIdentityMap();
     }
 
@@ -102,7 +108,7 @@ public class LibState {
 //
 //        String recovered_value = new String(recovered, StandardCharsets.UTF_8);
 //        assert(recovered_value.equals("top_secret"));
-//        System.out.println(recovered_value);
+//        logger.debug(recovered_value);
 //
 //        Object[] enc_key = cryptoImpl.encryptionKeyGen();
 //        byte[] alice_ek = (byte[]) enc_key[0];
@@ -125,7 +131,7 @@ public class LibState {
 //        byte[] plaintext = cryptoImpl.decryptThenVerify(ciphertext, alice_vk, bob_dk);
 //        recovered_value = new String(recovered, StandardCharsets.UTF_8);
 //        assert(recovered_value.equals("top_secret"));
-//        System.out.println(recovered_value);
+//        logger.debug(recovered_value);
 //    }
     public void init(String uri) {
 //        cryptoMain();
@@ -139,7 +145,7 @@ public class LibState {
                 startHttpServer(new URI(uri));
                 httpServerStarted = true;
                 if (getMeSharer() != null) {
-                    System.out.println("Init starting periodic task runner for the sharer");
+                    logger.debug("Init starting periodic task runner for the sharer");
                     PeriodicTaskRunner runner = new PeriodicTaskRunner();
                     runner.startProcessing();
                 }
@@ -187,13 +193,13 @@ public class LibState {
         this.myNonce = myNonce;
     }
 
-    public synchronized boolean isRecovering() {
-        return isRecovering;
-    }
+//    public synchronized boolean isRecovering() {
+//        return isRecovering;
+//    }
 
-    public synchronized void setRecovering(boolean recovering) {
-        isRecovering = recovering;
-    }
+//    public synchronized void setRecovering(boolean recovering) {
+//        isRecovering = recovering;
+//    }
 
     public synchronized SharerImpl getMeSharer() {
         return meSharer;
@@ -213,5 +219,9 @@ public class LibState {
 
     public synchronized void setMyHelperAndSharerId(LibIdentity libIdentity) {
         this.myHelperAndSharerId = libIdentity;
+    }
+
+    public DerecCryptoImpl getDerecCryptoImpl() {
+        return derecCryptoImpl;
     }
 }

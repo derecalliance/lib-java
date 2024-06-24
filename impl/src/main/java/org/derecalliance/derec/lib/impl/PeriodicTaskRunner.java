@@ -21,20 +21,20 @@ public class PeriodicTaskRunner {
 //                Derecmessage.DeRecMessage deRecMessage;
 //                while ((deRecMessage = LibState.getInstance().getIncomingMessageQueue().getNextRequest()) != null) {
 //                    // Process the request
-//                    System.out.println("Processing dequeued message");
+//                    logger.debug("Processing dequeued message");
 //                    // Check if messageBodies is present and is of type SharerMessageBodies
 //                    if (deRecMessage.hasMessageBodies() && deRecMessage.getMessageBodies().hasSharerMessageBodies()) {
-//                        System.out.println("sharer bodies");
+//                        logger.debug("sharer bodies");
 //                        // Iterate over each SharerMessageBody in SharerMessageBodies
 //                        for (Derecmessage.DeRecMessage.SharerMessageBody sharerMessageBody : deRecMessage.getMessageBodies().getSharerMessageBodies().getSharerMessageBodyList()) {
-//                            System.out.println("one sharer body");
+//                            logger.debug("one sharer body");
 //                            // Check if the SharerMessageBody contains a PairRequestMessage
 //                            if (sharerMessageBody.hasPairRequestMessage()) {
 //                                Pair.PairRequestMessage pairRequestMessage = sharerMessageBody.getPairRequestMessage();
-//                                System.out.println("Received Pair request " +
+//                                logger.debug("Received Pair request " +
 //                                        "message");
 //                            } else {
-//                                System.out.println("non pair request msg");
+//                                logger.debug("non pair request msg");
 //                            }
 //                        }
 //                    }
@@ -50,7 +50,7 @@ public class PeriodicTaskRunner {
                          ((SecretImpl)derecsecret).periodicWorkForSecret();
                     }
                 } catch (Exception ex) {
-                    System.out.println("Exception in periodic task runner");
+                    logger.error("Exception in periodic task runner");
                     ex.printStackTrace();
                 }
             }

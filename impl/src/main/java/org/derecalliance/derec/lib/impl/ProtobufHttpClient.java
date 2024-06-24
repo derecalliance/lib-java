@@ -3,6 +3,8 @@ package org.derecalliance.derec.lib.impl;
 import com.google.protobuf.Timestamp;
 import org.derecalliance.derec.protobuf.Derecmessage;
 import org.derecalliance.derec.protobuf.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,6 +21,7 @@ import java.time.Instant;
 public class ProtobufHttpClient {
 
     public static void main(String[] args) throws IOException, InterruptedException {
+        Logger staticLogger = LoggerFactory.getLogger(ProtobufHttpClient.class.getName());
         Pair.PairRequestMessage pairRequestMessage =
             Pair.PairRequestMessage
                     .newBuilder()
@@ -61,14 +64,15 @@ public class ProtobufHttpClient {
         if (response.statusCode() == 200) {
             Pair.PairResponseMessage responseMessage =
                     Pair.PairResponseMessage.parseFrom(response.body());
-            System.out.println("Received: Pair response with nonce: " +
+            staticLogger.debug("Received: Pair response with nonce: " +
                     responseMessage.getNonce() + ",  pub sign key: " + responseMessage.getPublicSignatureKey());
         } else {
-            System.out.println("Response status code: " + response.statusCode());
+            staticLogger.debug("Response status code: " + response.statusCode());
         }
     }
 
     public static int sendHttpRequest(String toUri, byte[] msgBytes) {
+        Logger staticLogger = LoggerFactory.getLogger(ProtobufHttpClient.class.getName());
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(toUri))
                 .header("Content-Type", "application/x-protobuf")
@@ -82,21 +86,21 @@ public class ProtobufHttpClient {
                 .build();
         HttpResponse<InputStream> response = null;
         try {
-            System.out.println("About to call client.send");
+            staticLogger.debug("About to call client.send");
             response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            System.out.println("After the call to client.send");
+            staticLogger.debug("After the call to client.send");
 
         } catch (HttpConnectTimeoutException ex) {
-            System.out.println("Could not send http message to " + toUri);
+            staticLogger.debug("Could not send http message to " + toUri);
             return (400);
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
 
         if (response.statusCode() == 200) {
-            System.out.println("Received good http response");
+            staticLogger.debug("Received good http response");
         } else {
-            System.out.println("Response status code: " + response.statusCode());
+            staticLogger.debug("Response status code: " + response.statusCode());
         }
         return response.statusCode();
     }

@@ -44,64 +44,86 @@ public class ProtobufHttpServer {
 //                for (int i = 0; i < 20; i++) {
 //                    System.out.print(msgBytes[i] + ", ");
 //                }
-//                System.out.println("");
+//                staticLogger.debug("");
 
                 exchange.sendResponseHeaders(200, -1);
 
-                int publicKeyId = MessageFactory.extractPublicKeyIdFromPackagedBytes(msgBytes);
-                logger.info("After extractPublicKeyIdFromPackagedBytes(), publicKeyId is: " + publicKeyId);
-                byte[] msg = MessageFactory.parsePackagedBytes(msgBytes, true);
-                if (msg == null) {
-                    onlyAcceptPairingMessages = true;
-                    msg = MessageFactory.parsePackagedBytes(msgBytes, false);
+                try {
+                    boolean result = MessageFactory.parseAndProcessPackagedBytes(msgBytes);
+                } catch (Exception ex) {
+                    logger.debug("Exception in handle", ex);
                 }
+
+                boolean old_code = false;
+                if (old_code) {
+                    int publicKeyId = MessageFactory.extractPublicKeyIdFromPackagedBytes(msgBytes);
+                    logger.info("After extractPublicKeyIdFromPackagedBytes(), publicKeyId is: " + publicKeyId);
+                    byte[] msg = null;
+                    try {
+                        msg = MessageFactory.parsePackagedBytes(msgBytes, true);
+                    } catch (Exception ex) {
+                        logger.error("Exception in MessageFactory.parsePackagedBytes  with verificationNeeded = true. " +
+                                "msgBytes: " + msgBytes, ex);
+                    }
+                    logger.debug("After parsePackagedBytes with verificationNeeded=true, msg = " + msg);
+                    if (msg == null) {
+                        onlyAcceptPairingMessages = true;
+                        try {
+                            msg = MessageFactory.parsePackagedBytes(msgBytes, false);
+                        } catch (Exception ex) {
+                            logger.error("Exception in MessageFactory.parsePackagedBytes with verificationNeeded = false." +
+                                    " msgBytes: " + msgBytes, ex);
+                        }
+                        logger.debug("After parsePackagedBytes with verificationNeeded=false, msg = " + msg);
+                    }
 
 //                System.out.print("------ after parsePackagedBytes bytes: ");
 //                for (int i = 0; i < 20; i++) {
 //                    System.out.print(msg[i] + ", ");
 //                }
-//                System.out.println("");
+//                staticLogger.debug("");
 
-                Derecmessage.DeRecMessage derecmessage =
-                        Derecmessage.DeRecMessage.parseFrom(msg);
+                    Derecmessage.DeRecMessage derecmessage =
+                            Derecmessage.DeRecMessage.parseFrom(msg);
 
-                // If we said that we are only accepting pairing messages, then ensure that either Pairing Request or
-                // Pairing Response message is parsable. Otherwise drop the message.
-                logger.debug("in handle: onlyAcceptPairingMessages=" + onlyAcceptPairingMessages);
+                    // If we said that we are only accepting pairing messages, then ensure that either Pairing Request or
+                    // Pairing Response message is parsable. Otherwise drop the message.
+                    logger.debug("in handle: onlyAcceptPairingMessages=" + onlyAcceptPairingMessages);
 
 //                try {
-//                    System.out.println("hasPairRequest=" +
+//                    logger.debug("hasPairRequest=" +
 //                                    (derecmessage.hasMessageBodies() &&
 //                                            derecmessage.getMessageBodies().hasSharerMessageBodies() &&
 //                                            derecmessage.getMessageBodies().getSharerMessageBodies().getSharerMessageBody(0).hasPairRequestMessage()));
 //
-//                    System.out.println("hasPairResponse=" + (derecmessage.hasMessageBodies() &&
+//                    logger.debug("hasPairResponse=" + (derecmessage.hasMessageBodies() &&
 //                            derecmessage.getMessageBodies().hasHelperMessageBodies() &&
 //                            derecmessage.getMessageBodies().getHelperMessageBodies().getHelperMessageBody(0).hasPairResponseMessage()));
 //                } catch(Exception ex) {
-//                    System.out.println("Exception in printing hasPairRequest/Response");
+//                    logger.error("Exception in printing hasPairRequest/Response");
 //                    System.err.println (ex);
 //                }
 
-                if (!onlyAcceptPairingMessages ||
-                        (onlyAcceptPairingMessages &&
-                                ((derecmessage.hasMessageBodies() &&
-                                        derecmessage.getMessageBodies().hasSharerMessageBodies() &&
-                                        derecmessage.getMessageBodies().getSharerMessageBodies().getSharerMessageBody(0).hasPairRequestMessage()) ||
-                                (derecmessage.hasMessageBodies() &&
-                                        derecmessage.getMessageBodies().hasHelperMessageBodies() &&
-                                        derecmessage.getMessageBodies().getHelperMessageBodies().getHelperMessageBody(0).hasPairResponseMessage()))
-                        )) {
-//                    System.out.println("going to process the message parser");
-                    MessageParser mp = new MessageParser();
-                    mp.parseMessage(publicKeyId, derecmessage);
-                } else {
-                    // Drop the message
-                    logger.info("Handle: could not verify the signature on the received message, and it " +
-                            "wasn't a pairing message. Dropping");
-                }
+                    if (!onlyAcceptPairingMessages ||
+                            (onlyAcceptPairingMessages &&
+                                    ((derecmessage.hasMessageBodies() &&
+                                            derecmessage.getMessageBodies().hasSharerMessageBodies() &&
+                                            derecmessage.getMessageBodies().getSharerMessageBodies().getSharerMessageBody(0).hasPairRequestMessage()) ||
+                                            (derecmessage.hasMessageBodies() &&
+                                                    derecmessage.getMessageBodies().hasHelperMessageBodies() &&
+                                                    derecmessage.getMessageBodies().getHelperMessageBodies().getHelperMessageBody(0).hasPairResponseMessage()))
+                            )) {
+//                    logger.debug("going to process the message parser");
+                        MessageParser mp = new MessageParser();
+                        mp.parseMessage(publicKeyId, derecmessage);
+                    } else {
+                        // Drop the message
+                        logger.info("Handle: could not verify the signature on the received message, and it " +
+                                "wasn't a pairing message. Dropping");
+                    }
 
 //                LibState.getInstance().getIncomingMessageQueue().addRequest(derecmessage);
+                }
             } else {
                 exchange.sendResponseHeaders(405, -1); // Method Not Allowed
             }

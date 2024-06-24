@@ -3,6 +3,8 @@ package org.derecalliance.derec.lib.impl;
 import com.google.protobuf.ByteString;
 import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.derecalliance.derec.protobuf.Storeshare;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Base64;
@@ -10,6 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class CommittedDeRecShare {
+    Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     public static class DeRecShare {
         byte[] encryptedSecret;
@@ -122,7 +125,7 @@ public class CommittedDeRecShare {
                 siblingHashes.add(new SiblingHash(entry.getIsLeft(), entry.getHash().toByteArray()));
             }
         } catch (Exception ex) {
-            System.out.println("Exception in CommittedDeRecShare constructor");
+            logger.error("Exception in CommittedDeRecShare constructor");
             ex.printStackTrace();
             return;
         }

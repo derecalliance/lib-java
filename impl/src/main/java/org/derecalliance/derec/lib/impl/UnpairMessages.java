@@ -6,6 +6,8 @@ import org.derecalliance.derec.lib.api.DeRecIdentity;
 import org.derecalliance.derec.lib.api.DeRecPairingStatus;
 import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.derecalliance.derec.protobuf.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -20,11 +22,12 @@ public class UnpairMessages {
     public static void sendUnpairRequestMessage (
             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId, int publicKeyId,
             String memo) {
-        System.out.println("In sendUnpairRequestMessage");
+        Logger staticLogger = LoggerFactory.getLogger(UnpairMessages.class.getName());
+        staticLogger.debug("In sendUnpairRequestMessage");
         Derecmessage.DeRecMessage deRecMessage = createUnpairRequestMessage(senderId, receiverId, secretId,
                 memo);
 
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId);
+        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId, true);
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
@@ -32,29 +35,33 @@ public class UnpairMessages {
     public static void sendUnpairResponseMessage (
             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId, int publicKeyId,
             ResultOuterClass.Result result) {
-        System.out.println("In sendUnpairResponseMessage");
+        Logger staticLogger = LoggerFactory.getLogger(UnpairMessages.class.getName());
+
+        staticLogger.debug("In sendUnpairResponseMessage");
         Derecmessage.DeRecMessage deRecMessage = MessageFactory.createUnpairResponseMessage(
                 senderId, receiverId, secretId,
                 result);
-        System.out.println("Generated response: ");
+        staticLogger.debug("Generated response: ");
         MessageParser.printDeRecMessage(deRecMessage, "Sending messsage ");
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId);
+        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId, true);
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
     public static void handleUnpairRequest(int publicKeyId, DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId,
                                                Unpair.UnpairRequestMessage message) {
+        Logger staticLogger = LoggerFactory.getLogger(UnpairMessages.class.getName());
+
         try {
             // Process UnpairRequestMessage
-            System.out.println("In handleUnpairRequest");
+            staticLogger.debug("In handleUnpairRequest");
 
             LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.UNPAIR_INDICATION, senderId, secretId, -1);
 
             boolean requestOk = false;
             if (!(LibState.getInstance().getMeHelper().sharerStatuses.containsKey(senderId) &&
                     LibState.getInstance().getMeHelper().sharerStatuses.get(senderId).containsKey(secretId))) {
-                System.out.println("Unpair request received for unknown Sharer.Secret: <" + senderId + "." + secretId +
+                staticLogger.debug("Unpair request received for unknown Sharer.Secret: <" + senderId + "." + secretId +
                         ">");
             } else {
                 requestOk = true;
@@ -65,9 +72,9 @@ public class UnpairMessages {
                 TimerTask task = new TimerTask() {
                     @Override
                     public void run() {
-                        System.out.println("Timer expired in Unpair messages");
-                        System.out.println("Sharer statuses are:" + LibState.getInstance().getMeHelper().sharerStatusesToString());
-                        System.out.println("Calling removeSharer for: " + senderId.getName() + "key: " + senderId.getPublicEncryptionKey() +
+                        staticLogger.debug("Timer expired in Unpair messages");
+                        staticLogger.debug("Sharer statuses are:" + LibState.getInstance().getMeHelper().sharerStatusesToString());
+                        staticLogger.debug("Calling removeSharer for: " + senderId.getName() + "key: " + senderId.getPublicEncryptionKey() +
                                 "secretid: " + secretId);
                         LibState.getInstance().getMeHelper().removeSharer(senderId, secretId);
                     }
@@ -77,23 +84,25 @@ public class UnpairMessages {
             ResultOuterClass.Result result = ResultOuterClass.Result.newBuilder()
                     .setStatus(requestOk ? ResultOuterClass.StatusEnum.OK : ResultOuterClass.StatusEnum.FAIL)
                     .build();
-            System.out.println("About to call sendUnpairResponseMessage");
+            staticLogger.debug("About to call sendUnpairResponseMessage");
             UnpairMessages.sendUnpairResponseMessage(receiverId, senderId,
                     secretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(), result);
 
         } catch (Exception ex) {
-            System.out.println("Exception in handleUnpairRequest");
+            staticLogger.error("Exception in handleUnpairRequest");
             ex.printStackTrace();
         }
     }
 
     public static void handleUnpairResponse(int publicKeyId, DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId,
                                                  Unpair.UnpairResponseMessage message) {
+        Logger staticLogger = LoggerFactory.getLogger(UnpairMessages.class.getName());
+
         try {
-            System.out.println("In handleUnpairResponse from " + senderId.getName());
+            staticLogger.debug("In handleUnpairResponse from " + senderId.getName());
             // nothing to do
         } catch (Exception ex) {
-            System.out.println("Exception in handleVerifyShareResponse");
+            staticLogger.error("Exception in handleVerifyShareResponse");
             ex.printStackTrace();
         }
     }

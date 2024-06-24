@@ -2,6 +2,8 @@ package org.derecalliance.derec.lib.impl;
 
 import org.derecalliance.derec.lib.api.DeRecContact;
 import org.derecalliance.derec.protobuf.Contact;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -12,6 +14,7 @@ public class ContactImpl implements DeRecContact {
     private String publicEncryptionKey;
     private String transportUri;
     private long nonce;
+    Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
 
     public ContactImpl(int publicEncryptionKeyId, String publicEncryptionKey, long nonce, String transportUri) {
@@ -51,13 +54,13 @@ public class ContactImpl implements DeRecContact {
                         .setNonce(nonce)
                         .setTransportUri(transportUri)
                         .build();
-        System.out.println("Created bytes for QR code: " + Arrays.toString(contactMessage.toByteArray()));
+        logger.debug("Created bytes for QR code: " + Arrays.toString(contactMessage.toByteArray()));
         return contactMessage.toByteArray();
     }
 
     @Override
     public DeRecContact parseContactMessage(byte[] data) {
-        System.out.println("Trying to parse bytes for QR code: " + Arrays.toString(data));
+        logger.debug("Trying to parse bytes for QR code: " + Arrays.toString(data));
         try {
             Contact.ContactMessage contactMessage =
                     Contact.ContactMessage.parseFrom(data);

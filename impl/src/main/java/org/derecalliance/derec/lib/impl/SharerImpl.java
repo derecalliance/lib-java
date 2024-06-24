@@ -2,10 +2,7 @@ package org.derecalliance.derec.lib.impl;
 
 
 
-import org.derecalliance.derec.lib.api.DeRecIdentity;
-import org.derecalliance.derec.lib.api.DeRecSecret;
-import org.derecalliance.derec.lib.api.DeRecSharer;
-import org.derecalliance.derec.lib.api.DeRecStatusNotification;
+import org.derecalliance.derec.lib.api.*;
 
 import java.text.SimpleDateFormat;
 import java.util.Base64;
@@ -42,30 +39,13 @@ public class SharerImpl implements DeRecSharer {
 
         RecoveryContext recoveryContext;
 
-//    static {
-//        // Format the current time as MM-dd-HH-mm-ss
-//        SimpleDateFormat sdf = new SimpleDateFormat("MM-dd-HH-mm-ss");
-//        String formattedDate = sdf.format(new Date());
-//
-//        // Set the instanceId property with the formatted date
-//        System.setProperty("instanceId", System.getProperty("instanceId") + "-" + formattedDate);
-//
-//        // Debug print to verify
-//        System.out.println("Instance ID: " + System.getProperty("instanceId"));
-//    }
+        RecoveredState recoveredState;
 
-//    private static final Logger logger = LoggerFactory.getLogger(MyApp.class);
 
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
 
     public SharerImpl(String name, String uri) {
-//            SimpleDateFormat sdf = new SimpleDateFormat("MM-dd-HH-mm-ss");
-//            String logFileName = name + sdf.format(new Date());
-//            System.setProperty("instanceId", logFileName);
-//            logger.debug("Creating a log file with name: " + logFileName);
-//            System.out.println("Creating a log file with name: " + logFileName);
-
             secretsMap = new ConcurrentHashMap<>();
             parameterRange = Parameterrange.ParameterRange.newBuilder().build();
             // If a LibIdentity is already created for my role as a Helper, reuse that LibIdentity, otherwise create a
@@ -86,6 +66,8 @@ public class SharerImpl implements DeRecSharer {
 
             LibState.getInstance().setMeSharer(this);
             recoveryContext = new RecoveryContext();
+            recoveredState = new RecoveredState();
+
             listener = notification -> {};
             LibState.getInstance().init(uri);
         }
@@ -161,6 +143,11 @@ public class SharerImpl implements DeRecSharer {
         public LibIdentity getMyLibId() {
             return myLibId;
         }
+
+        public void installRecoveredSecret(SecretImpl secret) {
+            secretsMap.put(secret.getSecretId(), secret);
+        }
+
         void printSecretsMap() {
             logger.debug("Secrets Map");
             for (DeRecSecret.Id secretId : secretsMap.keySet()) {
@@ -170,6 +157,73 @@ public class SharerImpl implements DeRecSharer {
 
         public RecoveryContext getRecoveryContext() {
             return recoveryContext;
+        }
+        public RecoveredState getRecoveredState() { return recoveredState; }
+
+    // Based on the information stored in recoveredState, update the current working state
+    public void recoveryComplete(DeRecSecret.Id recoverySecretId) {
+        logger.debug("In recoveryComplete");
+
+        for (SecretImpl recoveredSecret : recoveredState.getSecretsMap().values()) {
+            for (DeRecHelperStatus helperStatus : recoveredSecret.getHelperStatuses()) {
+                // Update the publicKeyId <-> identity map
+                DeRecIdentity recoveredHelperId = helperStatus.getId();
+                if (recoveredState.getHelperPublicEncryptionKeyToPublicKeyIdMap().containsKey(recoveredHelperId.getPublicEncryptionKey())) {
+                    LibState.getInstance().registerPublicKeyId(
+                            recoveredState.getHelperPublicEncryptionKeyToPublicKeyIdMap().get(recoveredHelperId.getPublicEncryptionKey()),
+                            recoveredHelperId);
+                    logger.debug("recoveryComplete: Added entry to publicKeyIdToIdentityMap for " + recoveredHelperId.getName() + ", " +
+                            "publicKeyId = "
+                            + recoveredState.getHelperPublicEncryptionKeyToPublicKeyIdMap().get(recoveredHelperId.getPublicEncryptionKey()));
+                    LibState.getInstance().printPublicKeyIdToIdentityMap();
+                } else {
+                    logger.debug("recoveryComplete: Entry not found for key: " + recoveredHelperId.getPublicEncryptionKey());
+                }
+            }
+        }
+
+        // Set my DeRec identity and keys from the recovered information
+        LibState.getInstance().getMeSharer().getMyLibId().setVariables(
+                recoveredState.getSharerIdentity().getMyId().getName(),
+                recoveredState.getSharerIdentity().getMyId().getContact(),
+                recoveredState.getSharerIdentity().getMyId().getAddress(),
+                recoveredState.getSharerIdentity().getEncryptionPrivateKey(),
+                recoveredState.getSharerIdentity().getEncryptionPublicKey(),
+                recoveredState.getSharerIdentity().getSignaturePrivateKey(),
+                recoveredState.getSharerIdentity().getSignaturePublicKey(),
+                recoveredState.getSharerIdentity().getPublicEncryptionKeyId(),
+                recoveredState.getSharerIdentity().getPublicSignatureKeyId());
+
+
+
+        // Install the secrets and calculate the shares for the secrets
+        for (SecretImpl recoveredSecret : recoveredState.getSecretsMap().values()) {
+            // Install secret
+            LibState.getInstance().getMeSharer().installRecoveredSecret(recoveredSecret);
+            logger.debug("Installed secret " + recoveredSecret.getDescription());
+
+            // Recalculate the shares for all versions now
+            DeRecSecret installedSecret = LibState.getInstance().getMeSharer().getSecret(recoveredSecret.getSecretId());
+            logger.debug("After installing, found secret: " + installedSecret.getDescription());
+            for (DeRecVersion deRecVersion: installedSecret.getVersions().values().stream().toList()) {
+                VersionImpl version = (VersionImpl) deRecVersion;
+                version.createShares();
+                logger.debug("Created shares for version: " + version.getVersionNumber());
+
+            }
+        }
+
+        // Delete the dummy secret used for pairing during recovery
+        DeRecSecret recoverySecret = getSecret(recoverySecretId);
+        recoverySecret.close();
+        logger.debug("Closed secret: " + recoverySecret.getDescription());
+
+        printSecretsMap();
+    }
+
+    public void removeSecret(DeRecSecret.Id secretId) {
+//            SecretImpl secretToRemove = (SecretImpl) getSecret(secretId);
+            secretsMap.remove(secretId);
         }
 
         public void deliverNotification(StatusNotificationImpl notification) {

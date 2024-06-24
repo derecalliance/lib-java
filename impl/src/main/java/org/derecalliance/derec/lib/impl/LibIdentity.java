@@ -2,6 +2,8 @@ package org.derecalliance.derec.lib.impl;
 
 import com.google.protobuf.ByteString;
 import org.derecalliance.derec.lib.api.DeRecIdentity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.security.KeyPair;
@@ -18,27 +20,27 @@ public class LibIdentity  {
     private String signaturePublicKey;
     private int publicEncryptionKeyId;
     private int publicSignatureKeyId;
+    Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     public LibIdentity(String name, String contact, String address) {
-        final boolean useRealCryptoLib = false;
         try {
-            if (useRealCryptoLib) {
-//                Object[] encryptionKeyPair;
-//                Object[] signatureKeyPair;
-//
-//                encryptionKeyPair = encryptionKeyGen(); //TODO: uncomment this (useCryptoLib)
-//                String encryptionPrivateKey = Base64.getEncoder().encodeToString(((byte[]) encryptionKeyPair[1]));
-//                String encryptionPublicKey = Base64.getEncoder().encodeToString(((byte[]) encryptionKeyPair[0]));
-//                int publicEncryptionKeyId = getLast32BitsOfMD5(encryptionPublicKey);
-//
-//                signatureKeyPair = signatureKeyGen(); //TODO: uncomment this (useCryptoLib)
-//                String signaturePrivateKey = Base64.getEncoder().encodeToString(((byte[]) signatureKeyPair[1]));
-//                String signaturePublicKey = Base64.getEncoder().encodeToString(((byte[]) signatureKeyPair[0]));
-//                int publicSignatureKeyId = getLast32BitsOfMD5(signaturePublicKey);
-//
-//                setVariables(name, contact, address, encryptionPrivateKey, encryptionPublicKey,
-//                        signaturePrivateKey, signaturePublicKey, publicEncryptionKeyId,
-//                        publicSignatureKeyId);
+            if (LibState.getInstance().useRealCryptoLib) {
+                Object[] encryptionKeyPair;
+                Object[] signatureKeyPair;
+
+                encryptionKeyPair = LibState.getInstance().getDerecCryptoImpl().encryptionKeyGen();
+                String encryptionPrivateKey = Base64.getEncoder().encodeToString(((byte[]) encryptionKeyPair[1]));
+                String encryptionPublicKey = Base64.getEncoder().encodeToString(((byte[]) encryptionKeyPair[0]));
+                int publicEncryptionKeyId = getLast32BitsOfMD5(encryptionPublicKey);
+
+                signatureKeyPair = LibState.getInstance().getDerecCryptoImpl().signatureKeyGen();
+                String signaturePrivateKey = Base64.getEncoder().encodeToString(((byte[]) signatureKeyPair[1]));
+                String signaturePublicKey = Base64.getEncoder().encodeToString(((byte[]) signatureKeyPair[0]));
+                int publicSignatureKeyId = getLast32BitsOfMD5(signaturePublicKey);
+
+                setVariables(name, contact, address, encryptionPrivateKey, encryptionPublicKey,
+                        signaturePrivateKey, signaturePublicKey, publicEncryptionKeyId,
+                        publicSignatureKeyId);
             } else {
                 KeyPair encryptionKeyPair;
                 KeyPair signatureKeyPair;
@@ -60,7 +62,7 @@ public class LibIdentity  {
                         publicSignatureKeyId);
             }
         } catch (Exception ex) {
-            System.err.println("Exception in LibIdentity");
+            logger.error("Exception in LibIdentity");
             ex.printStackTrace();
         }
     }
@@ -162,6 +164,7 @@ public class LibIdentity  {
     }
 
     public static int getLast32BitsOfMD5(String input) {
+        Logger staticLogger = LoggerFactory.getLogger(LibIdentity.class.getName());
         try {
             // Create MD5 Hash
             MessageDigest md = MessageDigest.getInstance("MD5");
@@ -178,7 +181,7 @@ public class LibIdentity  {
                     (last4Bytes[2] << 8) & 0x0000FF00 |
                     (last4Bytes[3]) & 0x000000FF;
 //            int result = new BigInteger(1, last4Bytes).intValue();
-            System.out.println("For input " + input + " getLast32BitsOfMD5() generated result " + result);
+            staticLogger.debug("For input " + input + " getLast32BitsOfMD5() generated result " + result);
             return result;
 
         } catch (Exception e) {

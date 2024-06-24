@@ -30,6 +30,12 @@ public class HelperImpl implements DeRecHelper {
     ConcurrentHashMap<DeRecIdentity, ConcurrentHashMap<DeRecSecret.Id, SharerStatusImpl>> sharerStatuses =
             new ConcurrentHashMap<>();
 
+    // During recovery, the sharer will come back with a new public key. To help this sharer recover their
+    // previously stored shares, the helper must map the recovering sharer's public key to their previous lost
+    // identity that they were helping.
+    // Maps the public key of the recovering helper to their previous DeRecIdentity
+    public HashMap<String, SharerStatusImpl> publicKeyToLostSharerMap = new HashMap<>();
+
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     private Function<DeRecHelper.Notification, DeRecHelper.NotificationResponse> listener = n -> {
@@ -61,9 +67,11 @@ public class HelperImpl implements DeRecHelper {
     public class NotificationResponse implements DeRecHelper.NotificationResponse {
         String reason;
         boolean result; // true if OK to proceed, false if application denies request
-        public NotificationResponse(boolean result, String reason) {
+        Object referenceObject; // reference object, return null if not needed
+        public NotificationResponse(boolean result, String reason, Object referenceObject) {
             this.result = result;
             this.reason = reason;
+            this.referenceObject = referenceObject;
         }
 
         @Override
@@ -75,9 +83,13 @@ public class HelperImpl implements DeRecHelper {
         public String getReason() {
             return reason;
         }
-
+        @Override
         public boolean getResult() {
             return result;
+        }
+        @Override
+        public Object getReferenceObject() {
+            return referenceObject;
         }
     }
 
@@ -133,8 +145,8 @@ public class HelperImpl implements DeRecHelper {
     }
 
     @Override
-    public DeRecHelper.NotificationResponse newNotificationResponse(boolean result, String reason) {
-        return new NotificationResponse(result, reason);
+    public DeRecHelper.NotificationResponse newNotificationResponse(boolean result, String reason, Object obj) {
+        return new NotificationResponse(result, reason, obj);
     }
 
 
@@ -146,6 +158,21 @@ public class HelperImpl implements DeRecHelper {
     @Override
     public int getPublicEncryptionKeyId() {
         return myLibId.getPublicEncryptionKeyId();
+    }
+
+    @Override
+    public String getPublicSignatureKey() {
+        return myLibId.getSignaturePublicKey();
+    }
+
+    @Override
+    public String getPrivateEncryptionKey() {
+        return myLibId.getEncryptionPrivateKey();
+    }
+
+    @Override
+    public String getPrivateSignatureKey() {
+        return myLibId.getSignaturePrivateKey();
     }
 
     @Override
@@ -441,6 +468,21 @@ public class HelperImpl implements DeRecHelper {
         });
     }
 
+    public void registerIdentityReconciliation(String publicEncryptionKey, SharerStatusImpl sharerStatus) {
+        publicKeyToLostSharerMap.put(publicEncryptionKey, sharerStatus);
+    }
+
+    public SharerStatusImpl getLostSharer(String publicEncryptionKey) {
+        return publicKeyToLostSharerMap.get(publicEncryptionKey);
+    }
+
+    public void printPublicKeyToLostSharerMap() {
+        logger.debug("printPublicKeyToLostSharerMap");
+        for (String key : publicKeyToLostSharerMap.keySet()) {
+            logger.debug("New public Key: " + key + " -> " + publicKeyToLostSharerMap.get(key));
+        }
+        logger.debug("---- End of printPublicKeyToLostSharerMap ----");
+    }
     public DeRecHelper.NotificationResponse deliverNotification(DeRecHelper.Notification.Type type, DeRecIdentity sharerId, DeRecSecret.Id secretId, int versionNumber) {
         Notification notification = new Notification(type, sharerId, secretId, versionNumber);
         DeRecHelper.NotificationResponse response = listener.apply(notification);

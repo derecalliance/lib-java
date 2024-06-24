@@ -9,6 +9,8 @@ import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.derecalliance.derec.protobuf.Derecmessage;
 import org.derecalliance.derec.protobuf.ResultOuterClass;
 import org.derecalliance.derec.protobuf.Verify;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -28,7 +30,7 @@ public class VerifyShareMessages {
             int versionNumber, byte[] nonce) {
         Derecmessage.DeRecMessage deRecMessage = createVerifyShareRequestMessage(senderId, receiverId, secretId,
                 versionNumber, nonce);
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId);
+        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId, true);
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
@@ -36,19 +38,22 @@ public class VerifyShareMessages {
     public static void sendVerifyShareResponseMessage(
         DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId, int publicKeyId,
             ResultOuterClass.Result result, int versionNumber,byte[] nonce, byte[] hash) {
-        System.out.println("In sendVerifyShareResponseMessage");
+        Logger staticLogger = LoggerFactory.getLogger(VerifyShareMessages.class.getName());
+        staticLogger.debug("In sendVerifyShareResponseMessage");
         Derecmessage.DeRecMessage deRecMessage = MessageFactory.createVerifyShareResponseMessage(
                 senderId, receiverId, secretId,
                 result, versionNumber, nonce, hash);
-        System.out.println("Generated sendVerifyShareResponseMessage: ");
+        staticLogger.debug("Generated sendVerifyShareResponseMessage: ");
         MessageParser.printDeRecMessage(deRecMessage, "Sending sendVerifyShareResponseMessage ");
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId);
+        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId, true);
 //        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
 
     static byte[] calculateVerificationHash(byte[] data, byte[] nonce) {
+        Logger staticLogger = LoggerFactory.getLogger(VerifyShareMessages.class.getName());
+
         try {
             byte[] combined = new byte[data.length + nonce.length];
             System.arraycopy(data, 0, combined, 0, data.length);
@@ -57,7 +62,7 @@ public class VerifyShareMessages {
             MessageDigest digest = MessageDigest.getInstance("SHA-384");
             return digest.digest(combined);
         } catch (Exception ex) {
-            System.out.println("Exception in calculateVerificationHash");
+            staticLogger.error("Exception in calculateVerificationHash");
             ex.printStackTrace();
             throw new RuntimeException("Exception in calculateVerificationHash");
 
@@ -66,12 +71,14 @@ public class VerifyShareMessages {
 
     public static void handleVerifyShareRequest(int publicKeyId, DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId,
                                                Verify.VerifyShareRequestMessage message) {
+        Logger staticLogger = LoggerFactory.getLogger(VerifyShareMessages.class.getName());
+
         try {
-            System.out.println("In handleVerifyShareRequest");
+            staticLogger.debug("In handleVerifyShareRequest");
 //            SharerStatus sharerStatus = new SharerStatus(senderId);
             if (!(LibState.getInstance().getMeHelper().sharerStatuses.containsKey(senderId) &&
                     LibState.getInstance().getMeHelper().sharerStatuses.get(senderId).containsKey(secretId))) {
-                System.out.println("VerifyShare request received for unknow Sharer.Secret: <" + senderId + "." + secretId + ">");
+                staticLogger.debug("VerifyShare request received for unknow Sharer.Secret: <" + senderId + "." + secretId + ">");
                 return;
             }
             var sharerStatus = LibState.getInstance().getMeHelper().sharerStatuses.get(senderId).get(secretId);
@@ -89,17 +96,17 @@ public class VerifyShareMessages {
 
 //            ShareImpl share = new ShareImpl(secretId, message.getVersion(), sharerStatus, message.getShare().toByteArray());
 //            LibState.getInstance().getMeHelper().addShare(sharerStatus, secretId, message.getVersion(), share);
-//            System.out.println("Added ShareImpl");
+//            staticLogger.debug("Added ShareImpl");
 //            ResultOuterClass.Result result = ResultOuterClass.Result.newBuilder()
 //                    .setStatus(ResultOuterClass.StatusEnum.OK)
 //                    .setMemo("Thank you for storing the share with me!")
 //                    .build();
-            System.out.println("About to call sendVerifyShareResponseMessage");
+            staticLogger.debug("About to call sendVerifyShareResponseMessage");
             VerifyShareMessages.sendVerifyShareResponseMessage(receiverId, sharerStatus.getId(),
                     secretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(), result,
                     versionNumber, nonce, hash);
         } catch (Exception ex) {
-            System.out.println("Exception in handleVerifyShareRequest");
+            staticLogger.error("Exception in handleVerifyShareRequest");
             ex.printStackTrace();
         }
     }
@@ -107,10 +114,12 @@ public class VerifyShareMessages {
 
     public static void handleVerifyShareResponse(int publicKeyId, DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId,
                                                  Verify.VerifyShareResponseMessage message) {
+        Logger staticLogger = LoggerFactory.getLogger(VerifyShareMessages.class.getName());
+
         try {
-            System.out.println("In handleVerifyShareResponse from " + senderId.getName());
+            staticLogger.debug("In handleVerifyShareResponse from " + senderId.getName());
             var secret =  (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
-            System.out.println("In handleVerifyShareResponse - Secret is: " + secret);
+            staticLogger.debug("In handleVerifyShareResponse - Secret is: " + secret);
             if (secret != null) {
                 int versionNumber = message.getVersion();
                 VersionImpl version = secret.getVersionByNumber(versionNumber);
@@ -120,25 +129,25 @@ public class VerifyShareMessages {
                 version.handleVerificationResponse(senderId, nonce, hash, versionNumber);
 
 //                ArrayList<DeRecHelperStatus> hStatuses = (ArrayList<DeRecHelperStatus>) secret.getHelperStatuses();
-//                System.out.println("In handleVerifyShareResponse - helper statuses");
+//                staticLogger.debug("In handleVerifyShareResponse - helper statuses");
 //                for (DeRecHelperStatus hs : hStatuses) {
-//                    System.out.println("Helper: " + hs.getId().getName() + ", Key:" + hs.getId().getPublicKey());
+//                    staticLogger.debug("Helper: " + hs.getId().getName() + ", Key:" + hs.getId().getPublicKey());
 //                }
-//                System.out.println("----");
-//                System.out.println("looking for name: " + senderId.getName() + ", key: " + senderId.getPublicKey());
+//                staticLogger.debug("----");
+//                staticLogger.debug("looking for name: " + senderId.getName() + ", key: " + senderId.getPublicKey());
 
 
 //                Optional<? extends DeRecHelperStatus> helperStatusOptional =
 //                        secret.getHelperStatuses().stream().filter(hs -> hs.getId().equalsKey(senderId)).findFirst();
 //                if (!helperStatusOptional.isPresent()) {
-//                    System.out.println("Could not find helper status for sender: " + senderId.getName());
+//                    staticLogger.debug("Could not find helper status for sender: " + senderId.getName());
 //                    return;
 //                }
 //
 //                DeRecHelperStatus helperStatus = (DeRecHelperStatus)helperStatusOptional.get();
 //
 //                if (helperStatus == null) {
-//                    System.out.println("Could not find helper status for sender: " + senderId.getName());
+//                    staticLogger.debug("Could not find helper status for sender: " + senderId.getName());
 //                    return;
 //                } else {
 //                    ShareImpl share = version.getShare(helperStatus);
@@ -148,20 +157,20 @@ public class VerifyShareMessages {
 //                        return;
 //                    }
 //                    byte [] expectedHash = calculateVerificationHash(share.getCommittedDeRecShareBytes(), nonce);
-//                    System.out.println("Expected hash: V(" + version.getVersionNumber() + ") " + Base64.getEncoder().encodeToString(expectedHash));
-//                    System.out.println("Received hash: V(" + versionNumber + ") " + Base64.getEncoder().encodeToString(message.getHash().toByteArray()));
+//                    staticLogger.debug("Expected hash: V(" + version.getVersionNumber() + ") " + Base64.getEncoder().encodeToString(expectedHash));
+//                    staticLogger.debug("Received hash: V(" + versionNumber + ") " + Base64.getEncoder().encodeToString(message.getHash().toByteArray()));
 //                    if (Arrays.equals(expectedHash, message.getHash().toByteArray())) {
 //                        // Re-verify that this share is still confirmed
 //                        version.updateConfirmationShareStorage(helperStatus, true);
-//                        System.out.println("hashes matched");
+//                        staticLogger.debug("hashes matched");
 //                    } else {
 //                        version.updateConfirmationShareStorage(helperStatus, false);
-//                        System.out.println("hashes not matched");
+//                        staticLogger.debug("hashes not matched");
 //                    }
 //                }
             }
         } catch (Exception ex) {
-            System.out.println("Exception in handleVerifyShareResponse");
+            staticLogger.error("Exception in handleVerifyShareResponse");
             ex.printStackTrace();
         }
     }

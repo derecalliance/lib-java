@@ -56,7 +56,7 @@ class MessageParser {
                         logger.info(" - encryptionKey: " + encryptionKey);
 
                     } else if (body.hasGetShareRequestMessage()) {
-                        logger.info("GetShareRequestMessage for secretId: " + body.getGetShareRequestMessage().getSecretId() + ", " +
+                        logger.info("GetShareRequestMessage for secretId: " + Base64.getEncoder().encodeToString(body.getGetShareRequestMessage().getSecretId().toByteArray()) + ", " +
                                 "version number: " + body.getGetShareRequestMessage().getShareVersion());
                     } else if (body.hasGetSecretIdsVersionsRequestMessage()) {
                         logger.info("GetSecretIdsVersionsRequestMessage");
@@ -67,7 +67,7 @@ class MessageParser {
                         try {
                             CommittedDeRecShare committedDeRecShare =
                                    new CommittedDeRecShare(Storeshare.CommittedDeRecShare.parseFrom(msg.getShare()));
-//                            System.out.println("Committed DeRecShare (recd) is: " + committedDeRecShare.toString());
+//                            logger.debug("Committed DeRecShare (recd) is: " + committedDeRecShare.toString());
                         } catch (InvalidProtocolBufferException ex) {
                             logger.error("Exception in trying to parse the incoming share as a committed derec " +
                                     "share");
@@ -101,8 +101,8 @@ class MessageParser {
                          logger.info("ErrorResponseMessage");
                      } else if (body.hasGetShareResponseMessage()) {
                          logger.info("GetShareResponseMessage, Result: " + body.getGetShareResponseMessage().getResult().getStatus().toString());
-//                         System.out.println("ShareImpl size: " + body.getGetShareResponseMessage().getCommittedDeRecShare().getDeRecShare().size());
-//                         System.out.println("Commitment: " + body.getGetShareResponseMessage().getCommittedDeRecShare().getCommitment());
+//                         logger.debug("ShareImpl size: " + body.getGetShareResponseMessage().getCommittedDeRecShare().getDeRecShare().size());
+//                         logger.debug("Commitment: " + body.getGetShareResponseMessage().getCommittedDeRecShare().getCommitment());
                          try {
                              Storeshare.DeRecShare shareMsg =
                                      Storeshare.DeRecShare.parseFrom(body.getGetShareResponseMessage().getCommittedDeRecShare().getDeRecShare());
@@ -139,7 +139,7 @@ class MessageParser {
          ByteString senderHash = message.getSender();
          DeRecIdentity senderId = LibState.getInstance().messageHashToIdentityMap.get(senderHash);
          if (senderId == null) {
-             System.out.println("Could not find an entry in hashToIdentityMap for sender " + senderHash);
+             logger.debug("Could not find an entry in hashToIdentityMap for sender " + senderHash);
 
              LibState.getInstance().printMessageHashToIdentityMap();
              if (!(message.hasMessageBodies() &&
