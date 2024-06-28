@@ -8,6 +8,7 @@ import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.Future;
 
 
@@ -668,15 +669,25 @@ public class SecretImpl implements DeRecSecret {
         }
 
     public void periodicWorkForSecret() {
-        logger.debug("Processing secret: " + getSecretId());
+        logger.debug("Processing secret: " + getSecretId() + " has #versions = " + getVersions().size());
         NavigableMap<Integer, VersionImpl> versions = (NavigableMap<Integer, VersionImpl>) getVersions();
         if (isRecovering()) {
             LibState.getInstance().getMeSharer().getRecoveryContext().evaluateAndSendGetShareRequests(getSecretId());
         } else {
-            for (VersionImpl version : versions.values()) {
+            List<Integer> versionsNumbersList = getVersions().keySet().stream().toList();
+            for (int versionNumber: versionsNumbersList) {
+                VersionImpl version = versions.get(versionNumber);
+//                if (version == null) {
+//                    logger.debug("Skiping processing version: " + versionNumber);
+//                    continue;
+//                }
                 version.sendSharesToPairedHelpers();
                 version.sendVerificationRequestsToPairedHelpers();
             }
+//            for (VersionImpl version : versions.values()) {
+//                version.sendSharesToPairedHelpers();
+//                version.sendVerificationRequestsToPairedHelpers();
+//            }
         }
     }
 }

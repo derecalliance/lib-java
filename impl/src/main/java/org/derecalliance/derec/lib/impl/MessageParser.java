@@ -64,15 +64,15 @@ class MessageParser {
                         logger.info("StoreShareRequestMessage");
                         Storeshare.StoreShareRequestMessage msg = body.getStoreShareRequestMessage();
                         logger.info(" - VersionImpl: " + msg.getVersion() + ", ShareImpl size: " + msg.getShare().size() + ", KeepList: " + msg.getKeepListList());
-                        try {
-                            CommittedDeRecShare committedDeRecShare =
-                                   new CommittedDeRecShare(Storeshare.CommittedDeRecShare.parseFrom(msg.getShare()));
-//                            logger.debug("Committed DeRecShare (recd) is: " + committedDeRecShare.toString());
-                        } catch (InvalidProtocolBufferException ex) {
-                            logger.error("Exception in trying to parse the incoming share as a committed derec " +
-                                    "share");
-                            ex.printStackTrace();
-                        }
+//                        try {
+//                            CommittedDeRecShare committedDeRecShare =
+//                                   new CommittedDeRecShare(Storeshare.CommittedDeRecShare.parseFrom(msg.getShare()));
+////                            logger.debug("Committed DeRecShare (recd) is: " + committedDeRecShare.toString());
+//                        } catch (InvalidProtocolBufferException ex) {
+//                            logger.error("Exception in trying to parse the incoming share as a committed derec " +
+//                                    "share");
+//                            ex.printStackTrace();
+//                        }
                     } else if (body.hasUnpairRequestMessage()) {
                         logger.info("UnpairRequestMessage");
                     } else if (body.hasVerifyShareRequestMessage()) {

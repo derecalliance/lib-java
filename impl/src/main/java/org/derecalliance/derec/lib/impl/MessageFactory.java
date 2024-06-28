@@ -173,7 +173,7 @@ class MessageFactory {
         List<Integer> keepList = secret.versionsMap.keySet().stream().toList();
 
         Storeshare.StoreShareRequestMessage storeShareRequestMessage =  Storeshare.StoreShareRequestMessage.newBuilder()
-                .setShare(ByteString.copyFrom(share.getCommittedDeRecShareBytes()))
+                .setShare(ByteString.copyFrom(share.getCommittedDeRecShare().toByteArray()))
                 .setShareAlgorithm(1)
                 .setVersion(share.getVersionNumber())
                 .addAllKeepList(keepList)

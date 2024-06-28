@@ -3,6 +3,7 @@ package org.derecalliance.derec.lib.impl;
 import org.derecalliance.derec.lib.api.*;
 import org.derecalliance.derec.lib.api.DeRecHelper;
 import org.derecalliance.derec.lib.api.DeRecSecret;
+import org.derecalliance.derec.protobuf.Storeshare;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,14 +13,15 @@ public class ShareImpl implements DeRecHelper.Share  {
     private DeRecHelper.SharerStatus sharerStatus;
     private DeRecSecret.Id secretId;
     private byte[] committedDeRecShareBytes;
+    private Storeshare.CommittedDeRecShare committedDeRecShare;
     private boolean isConfirmed;
 
     public ShareImpl(DeRecSecret.Id secretId, int versionNumber, DeRecHelper.SharerStatus sharerStatus,
-                     byte[] committedDeRecShareBytes) {
+                     Storeshare.CommittedDeRecShare committedDeRecShare) {
         this.secretId = secretId;
         this.versionNumber = versionNumber;
         this.sharerStatus = sharerStatus;
-        this.committedDeRecShareBytes = committedDeRecShareBytes;
+        this.committedDeRecShare = committedDeRecShare;
         isConfirmed = false;
     }
 
@@ -31,8 +33,8 @@ public class ShareImpl implements DeRecHelper.Share  {
         return sharerStatus;
     }
 
-    public byte[] getCommittedDeRecShareBytes() {
-        return committedDeRecShareBytes;
+    public Storeshare.CommittedDeRecShare getCommittedDeRecShare() {
+        return committedDeRecShare;
     }
 
     public boolean isConfirmed() {
