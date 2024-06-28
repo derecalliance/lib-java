@@ -11,11 +11,9 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static org.derecalliance.derec.lib.impl.CryptoPrimitives.dummyDecryptSecret;
 import static org.derecalliance.derec.lib.impl.SecretImpl.parseSecretMessage;
 
 //import static org.derecalliance.derec.lib.api.Secret.parseSecretMessage;
-//import static org.derecalliance.derec.lib.CryptoPrimitives.dummyDecryptSecret;
 
 public class RecoveryContext {
     HashMap<DeRecSecret.Id, HashMap<Integer, ArrayList<DeRecHelperStatus>>> recoverableShares;
