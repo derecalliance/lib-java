@@ -15,8 +15,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
-//import static org.derecalliance.derec.lib.CryptoPrimitives.dummyEncryptSecret;
-import static org.derecalliance.derec.lib.impl.CryptoPrimitives.dummyEncryptSecret;
 import static org.derecalliance.derec.lib.impl.VerifyShareMessages.calculateVerificationHash;
 
 public class VersionImpl implements DeRecVersion {
