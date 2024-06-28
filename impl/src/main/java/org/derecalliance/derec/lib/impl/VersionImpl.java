@@ -97,14 +97,13 @@ public class VersionImpl implements DeRecVersion {
             // Create shares
             sharesMap.clear();
             if (numPairedHelpers >= LibState.getInstance().getMinNumberOfHelpersForSendingShares()) {
-                // TODO: call Shamir Secret logic to split shares. For now, let's return the actual message itself
                 var myStatus = new SharerStatusImpl(LibState.getInstance().getMeSharer().getMyLibId().getMyId());
                 Storeshare.Secret secretMsg = secret.createSecretMessage(versionNumber);
                 byte[] valueToProtect = secretMsg.toByteArray();
 
                 logger.debug("Creating shares for version " + versionNumber);
                 List<byte[]> committedDeRecSharesList = LibState.getInstance().getDerecCryptoImpl().share(secret.getSecretId().getBytes(), versionNumber, valueToProtect, numPairedHelpers,
-                        (int)Math.ceil((double) numPairedHelpers / 2));
+                        (int)Math.max((double) numPairedHelpers / 2, LibState.getInstance().getMinNumberOfHelpersForRecovery()));
                 logger.debug("created " + committedDeRecSharesList.size() + " shares for version " + versionNumber + ", numPairedHelpers is " + numPairedHelpers);
 
                 for (int i = 0; i < numPairedHelpers; i++) {
