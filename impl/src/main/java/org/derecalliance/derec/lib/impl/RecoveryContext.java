@@ -192,13 +192,8 @@ public class RecoveryContext {
                 }
             }
 
-//            DummyMerkledVssFactory merkledVss = new DummyMerkledVssFactory();
             logger.debug("created merkledVss");
             logger.debug("Dump 1" + toString());
-            // TODO Check the merkle paths and uniqueness of the committment here
-//            byte[] encryptedValueToProtect = merkledVss.combine(secretId.getBytes(), versionNumber,
-//                    retrievedCommittedDeRecShares.get(secretId).get(versionNumber).values().stream()
-//                            .map(cds -> cds.getDeRecShare().getEncryptedSecret()).toList());
             byte[] valueToProtect = LibState.getInstance().getDerecCryptoImpl().recover(secretId.getBytes(), versionNumber,
                     retrievedCommittedDeRecShares.get(secretId).get(versionNumber).values().stream().map(cds -> cds.toByteArray()).toList());
             if (valueToProtect == null || valueToProtect.length == 0) {
@@ -209,13 +204,6 @@ public class RecoveryContext {
 
             // Now that we have successfully recombined, remove the shares from retrievedCommittedDeRecShares
             retrievedCommittedDeRecShares.get(secretId).put(versionNumber, new HashMap<>());
-
-//            // TODO: How will this even work? This was encrypted using the publicKey that the sharer had in the previous
-//            //  life.
-//            byte[] serializedSecretMessage = dummyDecryptSecret(encryptedValueToProtect);
-
-
-//            logger.debug("After dummyDecryptSecret size: " + serializedSecretMessage.length);
             parseSecretMessage(LibState.getInstance().getMeSharer().getRecoveredState(), secretId, valueToProtect);
 
 

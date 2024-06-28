@@ -102,40 +102,17 @@ public class VersionImpl implements DeRecVersion {
                 Storeshare.Secret secretMsg = secret.createSecretMessage(versionNumber);
                 byte[] valueToProtect = secretMsg.toByteArray();
 
-//                byte[] encryptedValueToProtect = dummyEncryptSecret(valueToProtect);
-
-//                DummyMerkledVssFactory merkledVss = new DummyMerkledVssFactory();
-                // TODO: this is wrong. It seems that the valueToProtect has Secret. Secret has versionsMap. So
-                //  for every version, we will end up sending all versions.
-//                List<byte[]> bytesForSharing = merkledVss.split(secret.getSecretId().getBytes(), versionNumber,
-//                        valueToProtect, numPairedHelpers, numPairedHelpers / 2);
                 logger.debug("Creating shares for version " + versionNumber);
                 List<byte[]> committedDeRecSharesList = LibState.getInstance().getDerecCryptoImpl().share(secret.getSecretId().getBytes(), versionNumber, valueToProtect, numPairedHelpers,
                         (int)Math.ceil((double) numPairedHelpers / 2));
                 logger.debug("created " + committedDeRecSharesList.size() + " shares for version " + versionNumber + ", numPairedHelpers is " + numPairedHelpers);
 
                 for (int i = 0; i < numPairedHelpers; i++) {
-//                    CommittedDeRecShare.DeRecShare derecShare =
-//                            new CommittedDeRecShare.DeRecShare(bytesForSharing.get(i),
-//                            new byte[]{1,2,3,4}, new byte[]{5,6,7,8}, secret.getSecretId(),
-//                                    versionNumber, "version's description");
-//                    // TODO: Calculate merkle root and paths for these DeRecShares
-//                    CommittedDeRecShare committedDeRecShare = new CommittedDeRecShare(derecShare,
-//                        new byte[] {4,3,2,1}, new ArrayList<>());
                     Storeshare.CommittedDeRecShare cds = Storeshare.CommittedDeRecShare.parseFrom(committedDeRecSharesList.get(i));
                     Storeshare.DeRecShare drs =  Storeshare.DeRecShare.parseFrom(cds.getDeRecShare());
                     logger.debug("x value ->" + Base64.getEncoder().encodeToString(drs.getX().toByteArray()));
                     logger.debug("secret id ->" + Base64.getEncoder().encodeToString(drs.getSecretId().toByteArray()) + ", version number -> " + drs.getVersion());
                     ShareImpl share = new ShareImpl(this.secret.getSecretId(), versionNumber, myStatus, cds);
-//                    try {
-//                        CommittedDeRecShare cds =
-//                                new CommittedDeRecShare(Storeshare.CommittedDeRecShare.parseFrom(share.getCommittedDeRecShareBytes()));
-//                        logger.debug("Committed DeRecShare (sending) is: " + cds.toString());
-//                    } catch (InvalidProtocolBufferException ex) {
-//                        logger.debug("Exception in trying to parse the constructed share as a committed derec " +
-//                                "share");
-//                        ex.printStackTrace();
-//                    }
                     sharesMap.put(pairedHelpers.get(i), share);
                     if (!unsuccessfulVerificationRequests.containsKey(pairedHelpers.get(i))) {
                         unsuccessfulVerificationRequests.put(pairedHelpers.get(i), 0);
