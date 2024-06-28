@@ -1,8 +1,10 @@
 package org.derecalliance.derec.lib.impl;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.derecalliance.derec.lib.api.DeRecVersion;
 import org.derecalliance.derec.lib.api.DeRecHelperStatus;
 import org.derecalliance.derec.lib.api.DeRecSecret;
+import org.derecalliance.derec.protobuf.Storeshare;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +21,7 @@ public class RecoveryContext {
     HashMap<DeRecSecret.Id, HashMap<Integer, ArrayList<DeRecHelperStatus>>> recoverableShares;
     HashMap<DeRecSecret.Id, HashMap<Integer, ArrayList<DeRecHelperStatus>>> getShareRequestsSent;
     HashMap<DeRecSecret.Id, ArrayList<Integer>>  successfullyRecoveredVersions;
-    HashMap<DeRecSecret.Id, HashMap<Integer, HashMap<DeRecHelperStatus, CommittedDeRecShare>>> retrievedCommittedDeRecShares;
+    HashMap<DeRecSecret.Id, HashMap<Integer, HashMap<DeRecHelperStatus, Storeshare.CommittedDeRecShare>>> retrievedCommittedDeRecShares;
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     RecoveryContext() {
@@ -155,7 +157,7 @@ public class RecoveryContext {
 
     public boolean saveRetrievedCommittedDeRecShare(DeRecSecret.Id secretId, Integer versionNumber,
                                                     DeRecHelperStatus helperStatus,
-                                                CommittedDeRecShare committedDeRecShare) {
+                                                Storeshare.CommittedDeRecShare committedDeRecShare) {
         logger.debug("In saveRetrievedCommittedDeRecShare for version # " + versionNumber);
         // Store the retrieved committedDeRecShare
         if (!retrievedCommittedDeRecShares.containsKey(secretId)) {
@@ -190,30 +192,31 @@ public class RecoveryContext {
                 }
             }
 
-            DummyMerkledVssFactory merkledVss = new DummyMerkledVssFactory();
+//            DummyMerkledVssFactory merkledVss = new DummyMerkledVssFactory();
             logger.debug("created merkledVss");
             logger.debug("Dump 1" + toString());
             // TODO Check the merkle paths and uniqueness of the committment here
-            byte[] encryptedValueToProtect = merkledVss.combine(secretId.getBytes(), versionNumber,
-                    retrievedCommittedDeRecShares.get(secretId).get(versionNumber).values().stream()
-                            .map(cds -> cds.getDeRecShare().getEncryptedSecret()).toList());
-            if (encryptedValueToProtect == null || encryptedValueToProtect.length == 0) {
+//            byte[] encryptedValueToProtect = merkledVss.combine(secretId.getBytes(), versionNumber,
+//                    retrievedCommittedDeRecShares.get(secretId).get(versionNumber).values().stream()
+//                            .map(cds -> cds.getDeRecShare().getEncryptedSecret()).toList());
+            byte[] valueToProtect = LibState.getInstance().getDerecCryptoImpl().recover(secretId.getBytes(), versionNumber,
+                    retrievedCommittedDeRecShares.get(secretId).get(versionNumber).values().stream().map(cds -> cds.toByteArray()).toList());
+            if (valueToProtect == null || valueToProtect.length == 0) {
                 logger.debug("Combine sent no data");
                 return false;
             }
-            logger.debug("created encryptedValueToProtect successfully, len: " + encryptedValueToProtect.length);
+            logger.debug("combined valueToProtect successfully, len: " + valueToProtect.length);
 
             // Now that we have successfully recombined, remove the shares from retrievedCommittedDeRecShares
             retrievedCommittedDeRecShares.get(secretId).put(versionNumber, new HashMap<>());
 
-            // TODO: How will this even work? This was encrypted using the publicKey that the sharer had in the previous
-            //  life.
-            byte[] serializedSecretMessage = dummyDecryptSecret(encryptedValueToProtect);
+//            // TODO: How will this even work? This was encrypted using the publicKey that the sharer had in the previous
+//            //  life.
+//            byte[] serializedSecretMessage = dummyDecryptSecret(encryptedValueToProtect);
 
 
-            logger.debug("After dummyDecryptSecret size: " + serializedSecretMessage.length);
-            SecretImpl recoveredSecret = parseSecretMessage(LibState.getInstance().getMeSharer().getRecoveredState(), secretId,
-                    serializedSecretMessage);
+//            logger.debug("After dummyDecryptSecret size: " + serializedSecretMessage.length);
+            parseSecretMessage(LibState.getInstance().getMeSharer().getRecoveredState(), secretId, valueToProtect);
 
 
 
@@ -260,17 +263,23 @@ public class RecoveryContext {
 
         sb.append("\n\nretrievedCommittedDeRecShares:\n");
 
-        for (Map.Entry<DeRecSecret.Id, HashMap<Integer, HashMap<DeRecHelperStatus, CommittedDeRecShare>>> secretEntry :
+        for (Map.Entry<DeRecSecret.Id, HashMap<Integer, HashMap<DeRecHelperStatus, Storeshare.CommittedDeRecShare>>> secretEntry :
                 retrievedCommittedDeRecShares.entrySet()) {
             sb.append("Secret Id: ").append(secretEntry.getKey().toString()).append("\n");
 
-            for (Map.Entry<Integer, HashMap<DeRecHelperStatus, CommittedDeRecShare>> versionEntry : secretEntry.getValue().entrySet()) {
+            for (Map.Entry<Integer, HashMap<DeRecHelperStatus, Storeshare.CommittedDeRecShare>> versionEntry : secretEntry.getValue().entrySet()) {
                 sb.append("  VersionImpl Number: ").append(versionEntry.getKey()).append("\n");
-                HashMap<DeRecHelperStatus, CommittedDeRecShare> map = versionEntry.getValue();
+                HashMap<DeRecHelperStatus, Storeshare.CommittedDeRecShare> map = versionEntry.getValue();
                 for (DeRecHelperStatus helperStatus: map.keySet()) {
-                    sb.append("  Helper: ").append(helperStatus.getId().getName()).append(": ");
-                    sb.append(" Ver Descr:").append(map.get(helperStatus).getDeRecShare().getVersionDescription());
-                    sb.append(" Ver num:").append(map.get(helperStatus).getDeRecShare().getVersion());
+                    try {
+                        Storeshare.DeRecShare deRecShare = Storeshare.DeRecShare.parseFrom(map.get(helperStatus).getDeRecShare());
+                        sb.append("  Helper: ").append(helperStatus.getId().getName()).append(": ");
+                        sb.append(" Ver Descr:").append(deRecShare.getVersionDescription());
+                        sb.append(" Ver num:").append(deRecShare.getVersion());
+                    } catch (Exception ex) {
+                        logger.debug("Exception occurred ", ex);
+                    }
+
                 }
             }
         }

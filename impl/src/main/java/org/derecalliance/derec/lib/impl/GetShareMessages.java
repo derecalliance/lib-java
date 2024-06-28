@@ -38,12 +38,12 @@ public class GetShareMessages {
     public static void sendGetShareResponseMessage(
             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id currentSecretId,
             DeRecSecret.Id recoveringSecretId, int publicKeyId,
-            ResultOuterClass.Result result, CommittedDeRecShare committedDeRecShare) {
+            ResultOuterClass.Result result, Storeshare.CommittedDeRecShare committedDeRecShare) {
         Logger staticLogger = LoggerFactory.getLogger(GetShareMessages.class.getName());
         staticLogger.debug("In sendGetShareResponseMessage");
         Derecmessage.DeRecMessage deRecMessage = MessageFactory.createGetShareResponseMessage(
                 senderId, receiverId, currentSecretId, recoveringSecretId,
-                result, committedDeRecShare.createCommittedDeRecShareMessage());
+                result, committedDeRecShare);
         staticLogger.debug("Generated response: ");
         MessageParser.printDeRecMessage(deRecMessage, "Sending messsage ");
         byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, currentSecretId,
@@ -88,36 +88,36 @@ public class GetShareMessages {
                     .findFirst();
 
             ResultOuterClass.Result result;
-            CommittedDeRecShare committedDeRecShare = null;
+//            CommittedDeRecShare committedDeRecShare = null;
             if (shareToReturn.isPresent()) {
                 staticLogger.debug("shareToReturn is present: from " + shareToReturn.get().getSharer().getId().getName());
 
 
-                try {
-                    CommittedDeRecShare cds =
-                            new CommittedDeRecShare(Storeshare.CommittedDeRecShare.parseFrom(shareToReturn.get().getCommittedDeRecShareBytes()));
-                    staticLogger.debug("In handleGetShareRequest Committed DeRecShare  is: " + cds.toString());
-                } catch (InvalidProtocolBufferException ex) {
-                    staticLogger.error("Exception in trying to parse the committed derec share");
-                    ex.printStackTrace();
-                }
+//                try {
+//                    CommittedDeRecShare cds =
+//                            new CommittedDeRecShare(Storeshare.CommittedDeRecShare.parseFrom(shareToReturn.get().getCommittedDeRecShareBytes()));
+//                    staticLogger.debug("In handleGetShareRequest Committed DeRecShare  is: " + cds.toString());
+//                } catch (InvalidProtocolBufferException ex) {
+//                    staticLogger.error("Exception in trying to parse the committed derec share");
+//                    ex.printStackTrace();
+//                }
 
 
 
                 result = ResultOuterClass.Result.newBuilder().setStatus(ResultOuterClass.StatusEnum.OK).build();
-                committedDeRecShare = new CommittedDeRecShare(
-                        Storeshare.CommittedDeRecShare.parseFrom(ByteString.copyFrom(shareToReturn.get().getCommittedDeRecShareBytes())));
+//                committedDeRecShare = new CommittedDeRecShare(
+//                        Storeshare.CommittedDeRecShare.parseFrom(ByteString.copyFrom(shareToReturn.get().getCommittedDeRecShareBytes())));
 
             } else {
                 staticLogger.debug("Oops. I couldn't find a shareToReturn");
                 result = ResultOuterClass.Result.newBuilder().setStatus(ResultOuterClass.StatusEnum.FAIL).build();
             }
-            staticLogger.debug("About to call sendGetShareResponseMessage, committedDeRecShare is: " + committedDeRecShare);
+            staticLogger.debug("About to call sendGetShareResponseMessage, committedDeRecShare is: " + shareToReturn);
             // Send GetShareResponse
             GetShareMessages.sendGetShareResponseMessage(receiverId, senderId,
                     currentSecretId, recoveringSecretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(),
                     result,
-                    committedDeRecShare);
+                    shareToReturn.get().getCommittedDeRecShare());
         } catch (Exception ex) {
             staticLogger.error("Exception in handleGetShareRequest");
             ex.printStackTrace();
@@ -134,8 +134,10 @@ public class GetShareMessages {
             var secret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
             staticLogger.debug("In handleGetShareResponse - Secret is: " + secret.getDescription());
             staticLogger.debug("Result: " + message.getResult().getStatus().toString());
-            CommittedDeRecShare committedDeRecShare = new CommittedDeRecShare(message.getCommittedDeRecShare());
-            staticLogger.debug("Version: " + committedDeRecShare.getDeRecShare().version);
+//            CommittedDeRecShare committedDeRecShare = new CommittedDeRecShare(message.getCommittedDeRecShare());
+            Storeshare.CommittedDeRecShare committedDeRecShare = message.getCommittedDeRecShare();
+            Storeshare.DeRecShare deRecShare = Storeshare.DeRecShare.parseFrom(message.getCommittedDeRecShare().getDeRecShare());
+            staticLogger.debug("Version: " + deRecShare.getVersion());
             Optional<HelperStatusImpl> helperStatusOptional = (Optional<HelperStatusImpl>)
                     LibState.getInstance().getMeSharer().getSecret(secretId).getHelperStatuses().stream().filter(hs -> hs.getId().getPublicEncryptionKey().equals(senderId.getPublicEncryptionKey())).findFirst();
             if (!helperStatusOptional.isPresent()) {
@@ -143,7 +145,7 @@ public class GetShareMessages {
                 return;
             }
 
-            int versionNumber = committedDeRecShare.getDeRecShare().version;
+            int versionNumber = deRecShare.getVersion();
             VersionImpl fakeVersion = new VersionImpl(secret, new byte[]{}, versionNumber);
 
             LibState.getInstance().getMeSharer().deliverNotification(DeRecStatusNotification.StandardNotificationType.RECOVERY_PROGRESS,
@@ -155,7 +157,7 @@ public class GetShareMessages {
                     LibState.getInstance().getMeSharer().getRecoveryContext().saveRetrievedCommittedDeRecShare(
                     secretId, versionNumber,  helperStatusOptional.get(), committedDeRecShare);
             if (success) {
-                DeRecSecret.Id recoveredSecretId = committedDeRecShare.getDeRecShare().getSecretId();
+                DeRecSecret.Id recoveredSecretId = new DeRecSecret.Id(deRecShare.getSecretId().toByteArray());
                 SecretImpl recoveredSecret = (SecretImpl) LibState.getInstance().getMeSharer().getRecoveredState().getSecret(recoveredSecretId);
 
                 staticLogger.debug("Sending RECOVERY_COMPLETE notification");

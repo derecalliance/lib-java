@@ -92,7 +92,7 @@ public class VerifyShareMessages {
             ResultOuterClass.Result result = ResultOuterClass.Result.newBuilder()
                     .setStatus(share == null ? ResultOuterClass.StatusEnum.UNKNOWN_SHARE_VERSION : ResultOuterClass.StatusEnum.OK)
                     .build();
-            byte [] hash = share == null ? new byte[]{} : calculateVerificationHash(share.getCommittedDeRecShareBytes(), nonce);
+            byte [] hash = share == null ? new byte[]{} : calculateVerificationHash(share.getCommittedDeRecShare().toByteArray(), nonce);
 
 //            ShareImpl share = new ShareImpl(secretId, message.getVersion(), sharerStatus, message.getShare().toByteArray());
 //            LibState.getInstance().getMeHelper().addShare(sharerStatus, secretId, message.getVersion(), share);

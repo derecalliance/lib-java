@@ -1,5 +1,6 @@
 package org.derecalliance.derec.lib.impl;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 //import org.derecalliance.derec.lib.LibState;
 //import org.derecalliance.derec.lib.Share;
@@ -66,18 +67,20 @@ public class StoreShareMessages {
             LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.UPDATE_INDICATION, senderId, secretId, message.getVersion());
             var sharerStatus = LibState.getInstance().getMeHelper().sharerStatuses.get(senderId).get(secretId);
 
+            Storeshare.CommittedDeRecShare cds = null;
             try {
-                CommittedDeRecShare cds =
-                        new CommittedDeRecShare(Storeshare.CommittedDeRecShare.parseFrom(message.getShare().toByteArray()));
-//                staticLogger.debug("In handleStoreShareRequest Committed DeRecShare  is: " + cds.toString());
+                cds = Storeshare.CommittedDeRecShare.parseFrom(message.getShare().toByteArray());
+                staticLogger.debug("In handleStoreShareRequest: parsed Committed DeRecShare successfully");
             } catch (InvalidProtocolBufferException ex) {
                 staticLogger.error("Exception in trying to parse the committed derec share");
                 ex.printStackTrace();
+                return;
             }
 
-            ShareImpl share = new ShareImpl(secretId, message.getVersion(), sharerStatus, message.getShare().toByteArray());
+
+            // Create a ShareImpl to store this received committedDeRecShare locally
+            ShareImpl share = new ShareImpl(secretId, message.getVersion(), sharerStatus, cds);
             LibState.getInstance().getMeHelper().addShare(sharerStatus, secretId, message.getVersion(), share);
-            staticLogger.debug("Added ShareImpl");
 
             ArrayList<Integer> keepList =  new ArrayList<>(message.getKeepListList());
             LibState.getInstance().getMeHelper().deleteCommittedDerecSharesBasedOnUpdatedKeepList(senderId,
@@ -85,16 +88,20 @@ public class StoreShareMessages {
 
             // Respond back to the sharer
             ResultOuterClass.Result result = ResultOuterClass.Result.newBuilder()
-                    .setStatus(ResultOuterClass.StatusEnum.OK)
+                    .setStatus(cds == null ? ResultOuterClass.StatusEnum.FAIL : ResultOuterClass.StatusEnum.OK)
                     .setMemo("Thank you for storing the share with me!")
                     .build();
-            staticLogger.debug("About to call sendStoreShareResponseMessage");
+
             // Send StoreShareResponse
             StoreShareMessages.sendStoreShareResponseMessage(receiverId, sharerStatus.getId(),
                     secretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(), result,
-                    share.getVersionNumber());
+                    message.getVersion());
 
-
+            if (share == null) {
+                staticLogger.debug("Sent sendStoreShareResponseMessage for unknown share");
+            } else {
+                staticLogger.debug("Sent sendStoreShareResponseMessage for secret " + share.getSecretId() + ", version " + share.getVersionNumber());
+            }
         } catch (Exception ex) {
             staticLogger.error("Exception in handleStoreShareRequest");
             ex.printStackTrace();

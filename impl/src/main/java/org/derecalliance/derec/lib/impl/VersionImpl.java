@@ -81,7 +81,7 @@ public class VersionImpl implements DeRecVersion {
 
     public void createShares() {
         try {
-            logger.debug("Creating shares for version " + versionNumber);
+
 
             // Find the list of healthy helpers (Paired helpers)
             List<DeRecHelperStatus> filteredList = (List<DeRecHelperStatus>) secret.getHelperStatuses().stream()
@@ -98,29 +98,35 @@ public class VersionImpl implements DeRecVersion {
             sharesMap.clear();
             if (numPairedHelpers >= LibState.getInstance().getMinNumberOfHelpersForSendingShares()) {
                 // TODO: call Shamir Secret logic to split shares. For now, let's return the actual message itself
-                var myStatus =
-                        new SharerStatusImpl(LibState.getInstance().getMeSharer().getMyLibId().getMyId());
-//                byte[] valueToProtect = secret.serialize();
+                var myStatus = new SharerStatusImpl(LibState.getInstance().getMeSharer().getMyLibId().getMyId());
                 Storeshare.Secret secretMsg = secret.createSecretMessage(versionNumber);
                 byte[] valueToProtect = secretMsg.toByteArray();
 
-                byte[] encryptedValueToProtect = dummyEncryptSecret(valueToProtect);
+//                byte[] encryptedValueToProtect = dummyEncryptSecret(valueToProtect);
 
-                DummyMerkledVssFactory merkledVss = new DummyMerkledVssFactory();
+//                DummyMerkledVssFactory merkledVss = new DummyMerkledVssFactory();
                 // TODO: this is wrong. It seems that the valueToProtect has Secret. Secret has versionsMap. So
                 //  for every version, we will end up sending all versions.
-                List<byte[]> bytesForSharing = merkledVss.split(secret.getSecretId().getBytes(), versionNumber,
-                        encryptedValueToProtect, numPairedHelpers, numPairedHelpers / 2);
+//                List<byte[]> bytesForSharing = merkledVss.split(secret.getSecretId().getBytes(), versionNumber,
+//                        valueToProtect, numPairedHelpers, numPairedHelpers / 2);
+                logger.debug("Creating shares for version " + versionNumber);
+                List<byte[]> committedDeRecSharesList = LibState.getInstance().getDerecCryptoImpl().share(secret.getSecretId().getBytes(), versionNumber, valueToProtect, numPairedHelpers,
+                        (int)Math.ceil((double) numPairedHelpers / 2));
+                logger.debug("created " + committedDeRecSharesList.size() + " shares for version " + versionNumber + ", numPairedHelpers is " + numPairedHelpers);
+
                 for (int i = 0; i < numPairedHelpers; i++) {
-                    CommittedDeRecShare.DeRecShare derecShare =
-                            new CommittedDeRecShare.DeRecShare(bytesForSharing.get(i),
-                            new byte[]{1,2,3,4}, new byte[]{5,6,7,8}, secret.getSecretId(),
-                                    versionNumber, "version's description");
-                    // TODO: Calculate merkle root and paths for these DeRecShares
-                    CommittedDeRecShare committedDeRecShare = new CommittedDeRecShare(derecShare,
-                        new byte[] {4,3,2,1}, new ArrayList<>());
-                    ShareImpl share = new ShareImpl(this.secret.getSecretId(), versionNumber, myStatus,
-                            committedDeRecShare.createCommittedDeRecShareMessage().toByteArray());
+//                    CommittedDeRecShare.DeRecShare derecShare =
+//                            new CommittedDeRecShare.DeRecShare(bytesForSharing.get(i),
+//                            new byte[]{1,2,3,4}, new byte[]{5,6,7,8}, secret.getSecretId(),
+//                                    versionNumber, "version's description");
+//                    // TODO: Calculate merkle root and paths for these DeRecShares
+//                    CommittedDeRecShare committedDeRecShare = new CommittedDeRecShare(derecShare,
+//                        new byte[] {4,3,2,1}, new ArrayList<>());
+                    Storeshare.CommittedDeRecShare cds = Storeshare.CommittedDeRecShare.parseFrom(committedDeRecSharesList.get(i));
+                    Storeshare.DeRecShare drs =  Storeshare.DeRecShare.parseFrom(cds.getDeRecShare());
+                    logger.debug("x value ->" + Base64.getEncoder().encodeToString(drs.getX().toByteArray()));
+                    logger.debug("secret id ->" + Base64.getEncoder().encodeToString(drs.getSecretId().toByteArray()) + ", version number -> " + drs.getVersion());
+                    ShareImpl share = new ShareImpl(this.secret.getSecretId(), versionNumber, myStatus, cds);
 //                    try {
 //                        CommittedDeRecShare cds =
 //                                new CommittedDeRecShare(Storeshare.CommittedDeRecShare.parseFrom(share.getCommittedDeRecShareBytes()));
@@ -262,7 +268,7 @@ public class VersionImpl implements DeRecVersion {
                         // that we later removed or declared inactive before they could respond.
                         return false;
                     }
-                    byte [] expectedHash = calculateVerificationHash(share.getCommittedDeRecShareBytes(), messageNonce);
+                    byte [] expectedHash = calculateVerificationHash(share.getCommittedDeRecShare().toByteArray(), messageNonce);
                     logger.debug("Expected hash: V(" + versionNumber + ") " + Base64.getEncoder().encodeToString(expectedHash));
                     logger.debug("Received hash: V(" + messageVersionNumber + ") " + Base64.getEncoder().encodeToString(messageHash));
                     if (Arrays.equals(expectedHash, messageHash)) {

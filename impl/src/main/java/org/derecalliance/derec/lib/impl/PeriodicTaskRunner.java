@@ -50,7 +50,7 @@ public class PeriodicTaskRunner {
                          ((SecretImpl)derecsecret).periodicWorkForSecret();
                     }
                 } catch (Exception ex) {
-                    logger.error("Exception in periodic task runner");
+                    logger.error("Exception in periodic task runner", ex);
                     ex.printStackTrace();
                 }
             }
