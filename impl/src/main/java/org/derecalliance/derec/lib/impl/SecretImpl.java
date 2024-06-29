@@ -298,7 +298,6 @@ public class SecretImpl implements DeRecSecret {
         public boolean isRecovering() {
             return isRecovering;
         }
-        @Override
         public void setRecovering(boolean recovering) {
             isRecovering = recovering;
         }

@@ -42,9 +42,7 @@ public interface DeRecHelper {
 		DeRecIdentity getId();
 
 		DeRecPairingStatus.PairingStatus getStatus();
-		void setPairingStatus(PairingStatus pairingStatus);
 		boolean isRecovering();
-		void setRecovering(boolean recovering);
 
 		/**
 		 * How the pairing request was responded to
