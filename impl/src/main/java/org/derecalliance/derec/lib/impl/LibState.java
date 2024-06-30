@@ -10,6 +10,7 @@ import org.derecalliance.derec.lib.api.DeRecSharer;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -50,6 +51,7 @@ public class LibState {
     // maps sender and receiver sha-384 hashes from incoming messages to sender and receiver DeRecIdentities
     public HashMap<ByteString, DeRecIdentity> messageHashToIdentityMap = new HashMap();
     public HashMap<Integer, DeRecIdentity> publicKeyIdToIdentityMap = new HashMap();
+
 
     public void printMessageHashToIdentityMap() {
         logger.debug("printMessageHashToIdentityMap");

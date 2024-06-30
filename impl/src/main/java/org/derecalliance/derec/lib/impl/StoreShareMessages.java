@@ -64,25 +64,31 @@ public class StoreShareMessages {
 
                 return;
             }
-            LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.UPDATE_INDICATION, senderId, secretId, message.getVersion());
+            staticLogger.debug("Share: isEmpty = " + message.getShare().isEmpty());
+            staticLogger.debug("Message version: " + message.getVersion());
+            Storeshare.CommittedDeRecShare cds = null;
             var sharerStatus = LibState.getInstance().getMeHelper().sharerStatuses.get(senderId).get(secretId);
 
-            Storeshare.CommittedDeRecShare cds = null;
-            try {
-                cds = Storeshare.CommittedDeRecShare.parseFrom(message.getShare().toByteArray());
-                staticLogger.debug("In handleStoreShareRequest: parsed Committed DeRecShare successfully");
-            } catch (InvalidProtocolBufferException ex) {
-                staticLogger.error("Exception in trying to parse the committed derec share");
-                ex.printStackTrace();
-                return;
+            if (!(message.getShare().isEmpty() || message.getVersion() == 0)) {
+                LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.UPDATE_INDICATION, senderId, secretId, message.getVersion());
+
+                try {
+                    cds = Storeshare.CommittedDeRecShare.parseFrom(message.getShare().toByteArray());
+                    staticLogger.debug("In handleStoreShareRequest: parsed Committed DeRecShare successfully");
+                } catch (InvalidProtocolBufferException ex) {
+                    staticLogger.error("Exception in trying to parse the committed derec share");
+                    ex.printStackTrace();
+                    return;
+                }
+
+
+                // Create a ShareImpl to store this received committedDeRecShare locally
+                ShareImpl share = new ShareImpl(secretId, message.getVersion(), sharerStatus, cds);
+                LibState.getInstance().getMeHelper().addShare(sharerStatus, secretId, message.getVersion(), share);
+                staticLogger.debug("Will send sendStoreShareResponseMessage for secret " + share.getSecretId() + ", version " + share.getVersionNumber());
             }
-
-
-            // Create a ShareImpl to store this received committedDeRecShare locally
-            ShareImpl share = new ShareImpl(secretId, message.getVersion(), sharerStatus, cds);
-            LibState.getInstance().getMeHelper().addShare(sharerStatus, secretId, message.getVersion(), share);
-
             ArrayList<Integer> keepList =  new ArrayList<>(message.getKeepListList());
+            staticLogger.debug("Received keeplist = " + keepList);
             LibState.getInstance().getMeHelper().deleteCommittedDerecSharesBasedOnUpdatedKeepList(senderId,
                     secretId, keepList);
 
@@ -97,11 +103,6 @@ public class StoreShareMessages {
                     secretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(), result,
                     message.getVersion());
 
-            if (share == null) {
-                staticLogger.debug("Sent sendStoreShareResponseMessage for unknown share");
-            } else {
-                staticLogger.debug("Sent sendStoreShareResponseMessage for secret " + share.getSecretId() + ", version " + share.getVersionNumber());
-            }
         } catch (Exception ex) {
             staticLogger.error("Exception in handleStoreShareRequest");
             ex.printStackTrace();

@@ -18,10 +18,14 @@ import com.google.protobuf.Timestamp;
 //import org.derecalliance.derec.lib.LibState;
 //import org.derecalliance.derec.lib.Version;
 //import org.derecalliance.derec.lib.utils.UuidUtils;
+import org.derecalliance.derec.protobuf.Derecmessage;
 import org.derecalliance.derec.protobuf.Storeshare;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.derecalliance.derec.lib.impl.MessageFactory.*;
+import static org.derecalliance.derec.lib.impl.ProtobufHttpClient.sendHttpRequest;
+import static org.derecalliance.derec.lib.impl.StoreShareMessages.sendStoreShareRequestMessage;
 import static org.derecalliance.derec.lib.impl.utils.MiscUtils.*;
 import static org.derecalliance.derec.lib.impl.utils.MiscUtils.writeToByteArrayOutputStream;
 
@@ -36,6 +40,7 @@ public class SecretImpl implements DeRecSecret {
 
         boolean isRecovering;
         TreeMap<Integer, VersionImpl> versionsMap;  // Semantically, this is the keepList from the sharer's side
+        HashMap<HelperStatusImpl, List<Integer>> versionsToCleanupFromHelpers = new HashMap();
 
         Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
@@ -326,18 +331,28 @@ public class SecretImpl implements DeRecSecret {
             logger.debug("Evaluating if versions can be deleted");
             if (highestProtectedVersionImpl.isPresent()) {
                 logger.debug("highest protected version number is " + highestProtectedVersionImpl.get().getValue().getVersionNumber());
-            }
-            ArrayList<Integer> versionsToDelete = new ArrayList<>();
-            versionsMap.forEach((versionNumber, versionImpl) -> {
-                logger.debug("Seeing if we can delete version " + versionNumber);
-                if (highestProtectedVersionImpl.isPresent() && versionNumber < highestProtectedVersionImpl.get().getValue().getVersionNumber()) {
-                    System.out.printf("Deleting version %d because %d is the highest protected version\n",
-                            versionNumber, highestProtectedVersionImpl.get().getKey());
-                    versionsToDelete.add(versionNumber);
+
+                ArrayList<Integer> versionsToDelete = new ArrayList<>();
+                versionsMap.forEach((versionNumber, versionImpl) -> {
+                    logger.debug("Seeing if we can delete version " + versionNumber);
+                    if (versionNumber < highestProtectedVersionImpl.get().getValue().getVersionNumber()) {
+                        logger.debug("Deleting version " + versionNumber + " because " +
+                                highestProtectedVersionImpl.get().getKey() + " is the highest protected version");
+                        versionsToDelete.add(versionNumber);
+                    }
+                });
+
+                logger.debug("Versions to be deleted: " + versionsToDelete);
+                versionsToDelete.forEach(this::deleteVersion);
+                if (versionsToDelete.size() > 0) {
+                    logger.debug("I have versions to delete. I will send empty StoreShareRequestMessage");
+                    for (HelperStatusImpl helperStatus : helperStatuses) {
+                        if (helperStatus.getStatus() == DeRecPairingStatus.PairingStatus.PAIRED) {
+                            versionsToCleanupFromHelpers.put(helperStatus, versionsMap.keySet().stream().toList());
+                        }
+                    }
                 }
-            });
-            logger.debug("Versions to be deleted: " + versionsToDelete);
-            versionsToDelete.forEach(this::deleteVersion);
+            }
         }
 
         void helperStatusChanged() {
@@ -687,6 +702,26 @@ public class SecretImpl implements DeRecSecret {
 //                version.sendSharesToPairedHelpers();
 //                version.sendVerificationRequestsToPairedHelpers();
 //            }
+
+            if (! versionsToCleanupFromHelpers.isEmpty()) {
+                logger.debug("versionsToCleanupFromHelpers is not empty");
+                for (HelperStatusImpl helperStatus : versionsToCleanupFromHelpers.keySet()) {
+                    List<Integer> keepList = versionsToCleanupFromHelpers.get(helperStatus);
+                    logger.debug("KeepList " + keepList);
+                    for (Integer v : keepList) {
+                        logger.debug("Keeplist item: " + v);
+                    }
+
+                    Derecmessage.DeRecMessage deRecMessage = createStoreShareRequestMessageWithoutShare(LibState.getInstance().getMeSharer().getMyLibId().getMyId(),
+                            helperStatus.getId(), id, keepList);
+                    byte[] msgBytes = getPackagedBytes(LibState.getInstance().getMeSharer().getMyLibId().getPublicEncryptionKeyId(),
+                            deRecMessage.toByteArray(), true, id, helperStatus.getId(), true);
+                    logger.debug("Finally sending the StoreShareRequestMessageWithoutShare - empty share with keeplist");
+                    sendHttpRequest(helperStatus.getId().getAddress(), msgBytes);
+                    logger.debug("After sendHttpRequest after StoreShareRequestMessageWithoutShare - empty share with keeplist");
+                }
+                versionsToCleanupFromHelpers = new HashMap();
+            }
         }
     }
 }
