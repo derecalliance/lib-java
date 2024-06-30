@@ -62,8 +62,7 @@ public class VerifyShareMessages {
             MessageDigest digest = MessageDigest.getInstance("SHA-384");
             return digest.digest(combined);
         } catch (Exception ex) {
-            staticLogger.error("Exception in calculateVerificationHash");
-            ex.printStackTrace();
+            staticLogger.error("Exception in calculateVerificationHash", ex);
             throw new RuntimeException("Exception in calculateVerificationHash");
 
         }
@@ -106,8 +105,7 @@ public class VerifyShareMessages {
                     secretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(), result,
                     versionNumber, nonce, hash);
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleVerifyShareRequest");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleVerifyShareRequest", ex);
         }
     }
 
@@ -170,8 +168,7 @@ public class VerifyShareMessages {
 //                }
             }
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleVerifyShareResponse");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleVerifyShareResponse", ex);
         }
     }
 }

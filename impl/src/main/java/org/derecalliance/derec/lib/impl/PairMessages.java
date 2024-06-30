@@ -163,8 +163,7 @@ class PairMessages {
                      LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.PAIR_INDICATION,
                              sharerId.get(), new DeRecSecret.Id(secretId), -1);
          } catch (Exception ex) {
-             staticLogger.error("Exception in handlePairRequest");
-             ex.printStackTrace();
+             staticLogger.error("Exception in handlePairRequest", ex);
          }
      }
      static void handlePairResponse(int publicKeyId, DeRecIdentity senderId, DeRecIdentity receiverId, byte[] secretId,
@@ -200,8 +199,7 @@ class PairMessages {
                          LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId());
              }
          } catch (Exception ex) {
-             staticLogger.error("Exception in handlePairResponse");
-             ex.printStackTrace();
+             staticLogger.error("Exception in handlePairResponse", ex);
          }
      }
 

@@ -108,8 +108,7 @@ class MessageParser {
                                      Storeshare.DeRecShare.parseFrom(body.getGetShareResponseMessage().getCommittedDeRecShare().getDeRecShare());
                              logger.info("Version: " + shareMsg.getVersion());
                          } catch (InvalidProtocolBufferException ex) {
-                             logger.error("Exception in trying to parse the incoming share as a derec share");
-                             ex.printStackTrace();
+                             logger.error("Exception in trying to parse the incoming share as a derec share", ex);
                          }
                      } else if (body.hasUnpairResponseMessage()) {
                          logger.info("UnpairResponseMessage");

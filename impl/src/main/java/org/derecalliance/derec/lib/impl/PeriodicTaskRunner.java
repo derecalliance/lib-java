@@ -51,7 +51,6 @@ public class PeriodicTaskRunner {
                     }
                 } catch (Exception ex) {
                     logger.error("Exception in periodic task runner", ex);
-                    ex.printStackTrace();
                 }
             }
         };

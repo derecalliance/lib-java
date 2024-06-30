@@ -119,8 +119,7 @@ public class GetShareMessages {
                     result,
                     shareToReturn.get().getCommittedDeRecShare());
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleGetShareRequest");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleGetShareRequest", ex);
         }
     }
 
@@ -168,8 +167,7 @@ public class GetShareMessages {
                         recoveredSecret, recoveredSecret.getVersionByNumber(versionNumber), null);
             }
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleGetShareResponse");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleGetShareResponse", ex);
         }
     }
 }

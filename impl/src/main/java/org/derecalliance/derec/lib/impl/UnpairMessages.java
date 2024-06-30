@@ -89,8 +89,7 @@ public class UnpairMessages {
                     secretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(), result);
 
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleUnpairRequest");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleUnpairRequest", ex);
         }
     }
 
@@ -102,8 +101,7 @@ public class UnpairMessages {
             staticLogger.debug("In handleUnpairResponse from " + senderId.getName());
             // nothing to do
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleVerifyShareResponse");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleVerifyShareResponse", ex);
         }
     }
 }

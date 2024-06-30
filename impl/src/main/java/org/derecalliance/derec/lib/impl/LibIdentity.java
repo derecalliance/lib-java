@@ -62,8 +62,7 @@ public class LibIdentity  {
                         publicSignatureKeyId);
             }
         } catch (Exception ex) {
-            logger.error("Exception in LibIdentity");
-            ex.printStackTrace();
+            logger.error("Exception in LibIdentity", ex);
         }
     }
     public LibIdentity(String name, String contact, String address,
@@ -84,8 +83,7 @@ public class LibIdentity  {
             setKeys(encryptionPrivateKey, encryptionPublicKey, signaturePrivateKey,
                      signaturePublicKey, publicEncryptionKeyId, publicSignatureKeyId);
         } catch (Exception ex) {
-            System.err.println("Exception in LibIdentity.setVariables");
-            ex.printStackTrace();
+            logger.error("Exception in LibIdentity.setVariables", ex);
         }
     }
     public void setKeys( String encryptionPrivateKey, String encryptionPublicKey, String signaturePrivateKey,
@@ -98,8 +96,7 @@ public class LibIdentity  {
             this.publicEncryptionKeyId = publicEncryptionKeyId;
             this.publicSignatureKeyId = publicSignatureKeyId;
         } catch (Exception ex) {
-            System.err.println("Exception in LibIdentity.setKeys");
-            ex.printStackTrace();
+            logger.error("Exception in LibIdentity.setKeys", ex);
         }
     }
 

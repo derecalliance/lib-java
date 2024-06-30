@@ -164,7 +164,7 @@ public class LibState {
                 hServer = new ProtobufHttpServer(uri);
             }
         } catch (Exception ex) {
-            System.err.println("Could not start http server\n");
+            logger.error("Could not start http server\n", ex);
         }
     }
 

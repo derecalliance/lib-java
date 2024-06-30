@@ -76,8 +76,7 @@ public class StoreShareMessages {
                     cds = Storeshare.CommittedDeRecShare.parseFrom(message.getShare().toByteArray());
                     staticLogger.debug("In handleStoreShareRequest: parsed Committed DeRecShare successfully");
                 } catch (InvalidProtocolBufferException ex) {
-                    staticLogger.error("Exception in trying to parse the committed derec share");
-                    ex.printStackTrace();
+                    staticLogger.error("Exception in trying to parse the committed derec share", ex);
                     return;
                 }
 
@@ -104,8 +103,7 @@ public class StoreShareMessages {
                     message.getVersion());
 
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleStoreShareRequest");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleStoreShareRequest", ex);
         }
     }
 
@@ -120,18 +118,23 @@ public class StoreShareMessages {
             staticLogger.debug("In handleStoreShareResponse - Secret is: " + secret);
             if (secret != null) {
                 VersionImpl version = secret.getVersionByNumber(message.getVersion());
-                Optional<? extends DeRecHelperStatus> helperStatusOptional =
-                        secret.getHelperStatuses().stream().filter(hs -> hs.getId().equals(senderId)).findFirst();
-                var helperStatus = (DeRecHelperStatus)helperStatusOptional.get();
-                if (helperStatus == null) {
-                    staticLogger.debug("Could not find helper status for sender: " + senderId.getName());
-                    return;
+                // Version is null when the Sharer sends a StoreShareRequest with no share/version (just the keepList update)
+                // In this case, the versionNumber in the StoreShareResponse message is not present in the protobuf, and defaults to 0.
+                // Hence the secret.getVersionByNumber(message.getVersion()) will return null
+                if (version != null) {
+                    Optional<? extends DeRecHelperStatus> helperStatusOptional =
+                            secret.getHelperStatuses().stream().filter(hs -> hs.getId().equals(senderId)).findFirst();
+                    if (helperStatusOptional.isPresent()) {
+                        var helperStatus = (DeRecHelperStatus) helperStatusOptional.get();
+                        version.updateConfirmationShareStorage(helperStatus, true);
+                    } else {
+                        staticLogger.debug("Could not find helper status for sender: " + senderId.getName());
+                        return;
+                    }
                 }
-                version.updateConfirmationShareStorage(helperStatus, true);
             }
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleStoreShareResponse");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleStoreShareResponse", ex);
         }
     }
 }

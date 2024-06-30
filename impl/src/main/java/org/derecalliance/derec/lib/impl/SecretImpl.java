@@ -40,6 +40,11 @@ public class SecretImpl implements DeRecSecret {
 
         boolean isRecovering;
         TreeMap<Integer, VersionImpl> versionsMap;  // Semantically, this is the keepList from the sharer's side
+
+        // When a new version (n) is created, it gets confirmed after the helpers receive the shares.
+        // When the version n is confirmed, we need to send a StoreShareRequestMessage just with the
+        // keepList (but no share) so that the helpers can delete version (n-1). This map is used to record
+        // the updated KeepList to send to individual helpers.
         HashMap<HelperStatusImpl, List<Integer>> versionsToCleanupFromHelpers = new HashMap();
 
         Logger logger = LoggerFactory.getLogger(this.getClass().getName());
@@ -54,8 +59,7 @@ public class SecretImpl implements DeRecSecret {
                 DeRecSecret.Id id = new DeRecSecret.Id(last16Bytes);
                 return id;
             } catch (Exception ex) {
-                staticLogger.error("Exception in generateId");
-                ex.printStackTrace();
+                staticLogger.error("Exception in generateId", ex);
                 throw new RuntimeException("Could not generateId");
             }
         }
@@ -88,8 +92,7 @@ public class SecretImpl implements DeRecSecret {
                 }
                 isRecovering = recovery;
             } catch (Exception ex) {
-                logger.error("Exception in secret constructor");
-                ex.printStackTrace();
+                logger.error("Exception in secret constructor", ex);
             }
         }
         public SecretImpl(String description, byte[] bytesToProtect, boolean recovery) {
@@ -351,6 +354,11 @@ public class SecretImpl implements DeRecSecret {
                             versionsToCleanupFromHelpers.put(helperStatus, versionsMap.keySet().stream().toList());
                         }
                     }
+                    logger.debug("versionsToCleanupFromHelpers: ");
+                    for (HelperStatusImpl helperStatus : versionsToCleanupFromHelpers.keySet()) {
+                        logger.debug("Helper: " + helperStatus.getId().getName() + ", KeepList: " + versionsToCleanupFromHelpers.get(helperStatus));
+                    }
+                    logger.debug("-- end of versionsToCleanupFromHelpers");
                 }
             }
         }
@@ -519,8 +527,7 @@ public class SecretImpl implements DeRecSecret {
                         .build();
                 return secretMessage;
             } catch (Exception ex) {
-                System.out.printf("Exception in createSecretMessage");
-                ex.printStackTrace();
+                logger.error("Exception in createSecretMessage", ex);
                 return null;
             }
         }
@@ -676,8 +683,7 @@ public class SecretImpl implements DeRecSecret {
                 recoveredState.addSecret(secret);
                 return secret;
             } catch (Exception ex) {
-                staticLogger.error("Exception in parseSecretMessage");
-                ex.printStackTrace();
+                staticLogger.error("Exception in parseSecretMessage", ex);
                 return null;
             }
         }
@@ -716,9 +722,9 @@ public class SecretImpl implements DeRecSecret {
                             helperStatus.getId(), id, keepList);
                     byte[] msgBytes = getPackagedBytes(LibState.getInstance().getMeSharer().getMyLibId().getPublicEncryptionKeyId(),
                             deRecMessage.toByteArray(), true, id, helperStatus.getId(), true);
-                    logger.debug("Finally sending the StoreShareRequestMessageWithoutShare - empty share with keeplist");
+                    logger.debug("Finally sending the StoreShareRequestMessageWithoutShare - empty share with keeplist to " + helperStatus.getId().getName() + ", keepList = " + keepList);
                     sendHttpRequest(helperStatus.getId().getAddress(), msgBytes);
-                    logger.debug("After sendHttpRequest after StoreShareRequestMessageWithoutShare - empty share with keeplist");
+                    logger.debug("After sendHttpRequest after StoreShareRequestMessageWithoutShare - empty share with keeplist" + helperStatus.getId().getName() + ", keepList = " + keepList);
                 }
                 versionsToCleanupFromHelpers = new HashMap();
             }
