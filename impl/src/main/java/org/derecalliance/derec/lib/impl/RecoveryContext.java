@@ -222,8 +222,7 @@ public class RecoveryContext {
             }
             return true;
         } catch (Exception ex) {
-            logger.error("Exception in attemptToRecombine");
-            ex.printStackTrace();
+            logger.error("Exception in attemptToRecombine", ex);
         }
 
         return false;
@@ -263,7 +262,7 @@ public class RecoveryContext {
                         sb.append(" Ver Descr:").append(deRecShare.getVersionDescription());
                         sb.append(" Ver num:").append(deRecShare.getVersion());
                     } catch (Exception ex) {
-                        logger.debug("Exception occurred ", ex);
+                        logger.debug("Exception in RecoveryContext toString ", ex);
                     }
 
                 }

@@ -166,16 +166,55 @@ class MessageFactory {
      }
 
     // Store share
+    public static Derecmessage.DeRecMessage createStoreShareRequestMessageWithoutShare(DeRecIdentity senderId,
+                                                                           DeRecIdentity receiverId,
+                                                                           DeRecSecret.Id secretId, List<Integer> keepList) {
+        Logger staticLogger = LoggerFactory.getLogger(MessageFactory.class.getName());
+
+        staticLogger.debug("in createStoreShareRequestMessageWithoutShare, keeplist = " + keepList);
+        for (Integer v : keepList) {
+            staticLogger.debug("createStoreShareRequestMessageWithoutShare Keeplist item: " + v);
+        }
+
+        Storeshare.StoreShareRequestMessage storeShareRequestMessage =  Storeshare.StoreShareRequestMessage.newBuilder()
+                .addAllKeepList(keepList)
+                .build();
+
+        Derecmessage.DeRecMessage deRecMessage = createSharerMessage(
+                senderId, receiverId, secretId,
+                builder -> builder.setStoreShareRequestMessage(storeShareRequestMessage)
+        );
+        printDeRecMessage(deRecMessage, "Sending messsage  - storeShareRequestMessage with empty share");
+        return deRecMessage;
+    }
+
     public static Derecmessage.DeRecMessage createStoreShareRequestMessage(DeRecIdentity senderId,
                                                                          DeRecIdentity receiverId,
                                                                            DeRecSecret.Id secretId, ShareImpl share) {
+        Logger staticLogger = LoggerFactory.getLogger(MessageFactory.class.getName());
+
         SecretImpl secret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
         List<Integer> keepList = secret.versionsMap.keySet().stream().toList();
 
-        Storeshare.StoreShareRequestMessage storeShareRequestMessage =  Storeshare.StoreShareRequestMessage.newBuilder()
+//        Storeshare.StoreShareRequestMessage storeShareRequestMessage =  Storeshare.StoreShareRequestMessage.newBuilder()
+//                .setShare(ByteString.copyFrom(share.getCommittedDeRecShare().toByteArray()))
+//                .setShareAlgorithm(1)
+//                .setVersion(share.getVersionNumber())
+//                .addAllKeepList(keepList)
+//                .build();
+
+        Storeshare.StoreShareRequestMessage.Builder storeShareRequestMessageBuilder =  Storeshare.StoreShareRequestMessage.newBuilder();
+
+        if (share != null) {
+            storeShareRequestMessageBuilder
                 .setShare(ByteString.copyFrom(share.getCommittedDeRecShare().toByteArray()))
                 .setShareAlgorithm(1)
-                .setVersion(share.getVersionNumber())
+                .setVersion(share.getVersionNumber());
+            staticLogger.debug("createStoreShareRequestMessage sending FULL share");
+        } else {
+            staticLogger.debug("createStoreShareRequestMessage sending BLANK share");
+        }
+        Storeshare.StoreShareRequestMessage storeShareRequestMessage = storeShareRequestMessageBuilder
                 .addAllKeepList(keepList)
                 .build();
 

@@ -119,8 +119,7 @@ public class VersionImpl implements DeRecVersion {
             }
             logger.debug("Created shares. Sharesmap size: " + sharesMap.size());
         } catch (Exception ex) {
-            logger.error("Exception in createShares");
-            ex.printStackTrace();
+            logger.error("Exception in createShares", ex);
         }
     }
 

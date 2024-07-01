@@ -108,8 +108,7 @@ class MessageParser {
                                      Storeshare.DeRecShare.parseFrom(body.getGetShareResponseMessage().getCommittedDeRecShare().getDeRecShare());
                              logger.info("Version: " + shareMsg.getVersion());
                          } catch (InvalidProtocolBufferException ex) {
-                             logger.error("Exception in trying to parse the incoming share as a derec share");
-                             ex.printStackTrace();
+                             logger.error("Exception in trying to parse the incoming share as a derec share", ex);
                          }
                      } else if (body.hasUnpairResponseMessage()) {
                          logger.info("UnpairResponseMessage");
@@ -207,19 +206,24 @@ class MessageParser {
 
         for (Derecmessage.DeRecMessage.SharerMessageBody body : bodies.getSharerMessageBodyList()) {
             if (body.hasPairRequestMessage()) {
+                logger.debug("PairRequestMessage");
                 handlePairRequest(publicKeyId, senderId, receiverId, secretId, body.getPairRequestMessage());
             } else if (body.hasGetShareRequestMessage()) {
                 logger.debug("GetShareRequestMessage");
                 handleGetShareRequest(publicKeyId, senderId, receiverId, new DeRecSecret.Id(secretId),body.getGetShareRequestMessage());
             } else if (body.hasGetSecretIdsVersionsRequestMessage()) {
+                logger.debug("GetSecretIdsVersionsRequestMessage");
                 handleGetSecretIdsVersionsRequest(publicKeyId, senderId, receiverId, new DeRecSecret.Id(secretId), body.getGetSecretIdsVersionsRequestMessage());
             } else if (body.hasStoreShareRequestMessage()) {
+                logger.debug("StoreShareRequestMessage");
                 handleStoreShareRequest(publicKeyId, senderId, receiverId, new DeRecSecret.Id(secretId),
                         body.getStoreShareRequestMessage());
             } else if (body.hasUnpairRequestMessage()) {
+                logger.debug("UnpairRequestMessage");
                 handleUnpairRequest(publicKeyId, senderId, receiverId, new DeRecSecret.Id(secretId),
                         body.getUnpairRequestMessage());
             } else if (body.hasVerifyShareRequestMessage()) {
+                logger.debug("VerifyShareRequestMessage");
                 handleVerifyShareRequest(publicKeyId, senderId, receiverId, new DeRecSecret.Id(secretId),
                         body.getVerifyShareRequestMessage());
             } else {

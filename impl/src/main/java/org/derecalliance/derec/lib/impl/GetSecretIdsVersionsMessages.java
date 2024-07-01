@@ -117,8 +117,7 @@ public class GetSecretIdsVersionsMessages {
                     secretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(), result,
                     okToSend ? secretIdAndVersions : new HashMap<>());
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleGetSecretIdsVersionsRequest");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleGetSecretIdsVersionsRequest", ex);
         }
     }
 
@@ -174,8 +173,7 @@ public class GetSecretIdsVersionsMessages {
                             null, null, helperStatus);
             }
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleGetSecretIdsVersionsResponse");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleGetSecretIdsVersionsResponse", ex);
         }
     }
 }

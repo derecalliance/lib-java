@@ -39,8 +39,7 @@ public class IdentityImpl extends DeRecIdentity {
             writeToByteArrayOutputStream(baos, identity.getPublicSignatureKey().getBytes());
             return baos.toByteArray();
         } catch (Exception ex) {
-            staticLogger.error("Exception in serializeDeRecIdentity");
-            ex.printStackTrace();
+            staticLogger.error("Exception in serializeDeRecIdentity", ex);
             return new byte[0];
         }
     }
@@ -56,8 +55,7 @@ public class IdentityImpl extends DeRecIdentity {
             String publicSignatureKey = new String(readByteArrayFromByteArrayInputStream(bais));
             return new DeRecIdentity(name, contact, address, publicEncryptionKey, publicSignatureKey);
         } catch (Exception ex) {
-            staticLogger.error("Exception in deserializeDeRecIdentity");
-            ex.printStackTrace();
+            staticLogger.error("Exception in deserializeDeRecIdentity", ex);
             return null;
         }
     }
