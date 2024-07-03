@@ -117,6 +117,9 @@ public class SecretImpl implements DeRecSecret {
                 logger.debug("Added my helper " + helperId.getName() + " to messageHashToIdentityMap");
                 LibState.getInstance().printMessageHashToIdentityMap();
 
+                LibState.getInstance().registerPublicKeyId(helperId.getPublicEncryptionKeyId(), helperId);
+                logger.debug("Added my helper " + helperId.getName() + " to publicKeyIdToIdentityMap");
+
                 // helper id that is scanned from the QR code
                 var helperStatus = new HelperStatusImpl(this, helperId, fakeNonce);
                 this.helperStatuses.add(helperStatus);
@@ -720,7 +723,7 @@ public class SecretImpl implements DeRecSecret {
 
                     Derecmessage.DeRecMessage deRecMessage = createStoreShareRequestMessageWithoutShare(LibState.getInstance().getMeSharer().getMyLibId().getMyId(),
                             helperStatus.getId(), id, keepList);
-                    byte[] msgBytes = getPackagedBytes(LibState.getInstance().getMeSharer().getMyLibId().getPublicEncryptionKeyId(),
+                    byte[] msgBytes = getPackagedBytes(helperStatus.getId().getPublicEncryptionKeyId(),
                             deRecMessage.toByteArray(), true, id, helperStatus.getId(), true);
                     logger.debug("Finally sending the StoreShareRequestMessageWithoutShare - empty share with keeplist to " + helperStatus.getId().getName() + ", keepList = " + keepList);
                     sendHttpRequest(helperStatus.getId().getAddress(), msgBytes);

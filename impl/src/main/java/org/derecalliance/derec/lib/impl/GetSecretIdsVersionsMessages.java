@@ -30,8 +30,7 @@ public class GetSecretIdsVersionsMessages {
                 (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId), null, hs);
 
         Derecmessage.DeRecMessage deRecMessage = createGetSecretIdsVersionsRequestMessage(senderId, receiverId, secretId);
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId, true);
-//        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), true, secretId, receiverId, true);
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
@@ -46,8 +45,7 @@ public class GetSecretIdsVersionsMessages {
                 result, secretIdAndVersions);
         staticLogger.debug("Generated sendGetSecretIdsVersionsResponseMessage: ");
         MessageParser.printDeRecMessage(deRecMessage, "Sending sendGetSecretIdsVersionsResponseMessage ");
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId, true);
-//        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), false, secretId, receiverId, true);
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
     

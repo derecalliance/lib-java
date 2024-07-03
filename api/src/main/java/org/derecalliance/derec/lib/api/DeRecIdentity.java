@@ -48,6 +48,7 @@ public class DeRecIdentity {
     private final String contact; // how to contact me outside the protocol, an
     // email address, for example
     private final String address; // transport address
+    private int publicEncryptionKeyId;
     private final String publicEncryptionKey;
     private String publicSignatureKey;
     private final byte[] publicEncryptionKeyDigest;
@@ -59,13 +60,15 @@ public class DeRecIdentity {
      * @param name human-readable name
      * @param contact contact address - e.g. email
      * @param address DeRec address
+     * @param publicEncryptionKeyId public encryption key id
      * @param publicEncryptionKey PEM encoded public encryption key
      * @param publicSignatureKey PEM encoded public signature key
      */
-    public DeRecIdentity(String name, String contact, String address, String publicEncryptionKey, String publicSignatureKey) {
+    public DeRecIdentity(String name, String contact, String address, int publicEncryptionKeyId, String publicEncryptionKey, String publicSignatureKey) {
         this.name = name;
         this.contact = contact;
         this.address = Objects.isNull(address) ? null : address;
+        this.publicEncryptionKeyId = publicEncryptionKeyId;
         this.publicEncryptionKey = publicEncryptionKey;
         this.publicSignatureKey = publicSignatureKey;
         this.publicEncryptionKeyDigest = messageDigest.digest(Base64.getDecoder().decode(publicEncryptionKey));
@@ -97,23 +100,25 @@ public class DeRecIdentity {
     }
 
     /**
-     * @return public key of the helper
+     * @return public encryption key id
      */
-//    public String getPublicKey() {
-//        return publicKey;
-//    }
+    public int getPublicEncryptionKeyId() {
+        return publicEncryptionKeyId;
+    }
 
+    /**
+     * @return PEM encoded public encryption key
+     */
     public String getPublicEncryptionKey() {
         return publicEncryptionKey;
     }
 
+    /**
+     * @return PEM encoded public signature key
+     */
     public String getPublicSignatureKey() {
         return publicSignatureKey;
     }
-
-//    public byte[] getPublicKeyDigest() {
-//        return publicKeyDigest;
-//    }
 
     public byte[] getPublicEncryptionKeyDigest() {
         return publicEncryptionKeyDigest;
@@ -127,6 +132,14 @@ public class DeRecIdentity {
         System.out.println("In setPublicSignatureKey: " + publicSignatureKey);
         this.publicSignatureKey = publicSignatureKey;
         this.publicSignatureKeyDigest = messageDigest.digest(Base64.getDecoder().decode(publicSignatureKey));
+    }
+
+    /**
+     * Used to set the publicEncryptionKeyId of the helper after receiving their Contact
+     * @param publicEncryptionKeyId public encryption key id
+     */
+    public void setPublicEncryptionKeyId(int publicEncryptionKeyId) {
+        this.publicEncryptionKeyId = publicEncryptionKeyId;
     }
 
 
@@ -156,6 +169,7 @@ public class DeRecIdentity {
 
     public String toString() {
         return "Name: " + name + ", Contact: " + contact + ", Address: " + address +
+                ", pubEncryptionKeyId: " + (publicEncryptionKeyId == 0 ? "null" : publicEncryptionKeyId) +
                 ", pubEncryptionKeyDigest: " + (publicEncryptionKeyDigest == null ? "null" : Base64.getEncoder().encodeToString(publicEncryptionKeyDigest)) +
                 ", pubSignatureKeyDigest: " + (publicSignatureKeyDigest == null ? "null" : Base64.getEncoder().encodeToString(publicSignatureKeyDigest));
     }

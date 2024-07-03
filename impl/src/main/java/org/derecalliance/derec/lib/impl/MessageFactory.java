@@ -364,6 +364,18 @@ class MessageFactory {
 //        return withPublicKeyId;
 //    }
 
+    /**
+     * Prepares the message to be sent over the wire
+     *
+     * @param publicKeyId public key id of the message recipient
+     * @param serializedDeRecMessage protobuf-serialized DeRecMessage
+     * @param isSharer True if message sender is a sharer. False otherwise.
+     * @param secretId secret id corresponding to the message
+     * @param receiverId DeRecIdentity of the message receiver
+     * @param shouldSign whether the message should be signed
+     * @return byte[] containing the complete message to be sent
+     */
+    // TODO: remove shouldSign flag since all outgoing messages are signed-then-encrypted
     public static byte[] getPackagedBytes(int publicKeyId, byte[] serializedDeRecMessage, boolean isSharer,
                                           DeRecSecret.Id secretId, DeRecIdentity receiverId,
                                           boolean shouldSign) {
@@ -405,13 +417,6 @@ class MessageFactory {
                     staticLogger.debug("Could not find helper status of receiver: " + receiverId.getName());
                     return null;
                 }
-//                var helperStatus = (DeRecHelperStatus) helperStatusOptional.get();
-//                if (helperStatus == null) {
-//                    System.out.println("Could not find helper status of receiver: " + receiverId.getName());
-//                    return null;
-//                }
-//                System.out.println("In getPackagedBytes, found helper " + helperStatus.getId().getName());
-//                publicEncryptionKey = helperStatus.getId().getPublicEncryptionKey();
             } else {
                 Optional<? extends SharerStatusImpl> sharerStatusOptional = LibState.getInstance().getMeHelper().getSharers().stream()
                         .filter(ss -> ss.getId().equals(receiverId)).findFirst();
@@ -421,14 +426,6 @@ class MessageFactory {
                     System.out.println("Could not find sharer status of receiver: " + receiverId.getName());
                     return null;
                 }
-
-//                SharerStatusImpl sharerStatus = sharerStatusOptional.get();
-//                if (sharerStatus == null) {
-//                    System.out.println("Could not find sharer status of receiver: " + receiverId.getName());
-//                    return null;
-//                }
-//                System.out.println("In getPackagedBytes, found sharer " + sharerStatus.getId().getName());
-//                publicEncryptionKey = sharerStatus.getId().getPublicEncryptionKey();
             }
 
             staticLogger.debug("About to signThenEncrypt with privateSignatureKey=" + privateSignatureKey + ", " +
@@ -436,18 +433,6 @@ class MessageFactory {
             byte[] signedBytes = LibState.getInstance().getDerecCryptoImpl().signThenEncrypt(serializedDeRecMessage,
                     Base64.getDecoder().decode(privateSignatureKey),
                     Base64.getDecoder().decode(publicEncryptionKey));
-
-//            if (shouldSign) {
-//                staticLogger.debug("About to signThenEncrypt with privateSignatureKey=" + privateSignatureKey + ", " +
-//                        "publicEncryptionKey=" + publicEncryptionKey);
-//                signedBytes = LibState.getInstance().getDerecCryptoImpl().signThenEncrypt(serializedDeRecMessage,
-//                        Base64.getDecoder().decode(privateSignatureKey),
-//                        Base64.getDecoder().decode(publicEncryptionKey));
-//            } else {
-//                staticLogger.debug("About to encrypt only - not signing");
-//                signedBytes = LibState.getInstance().getDerecCryptoImpl().encrypt(serializedDeRecMessage,
-//                        Base64.getDecoder().decode(publicEncryptionKey));
-//            }
 
             byte[] withPublicKeyId = ByteBuffer.allocate(4 + signedBytes.length)
                     .putInt(publicKeyId)
@@ -527,7 +512,7 @@ class MessageFactory {
             byte[] remainingBytes = new byte[receivedMessage.length - 4];
             System.arraycopy(receivedMessage, 4, remainingBytes, 0, remainingBytes.length);
 
-            DeRecIdentity peerDeRecIdentity = LibState.getInstance().publicKeyIdToIdentityMap.get(extractedPublicKeyId);
+//            DeRecIdentity peerDeRecIdentity = LibState.getInstance().publicKeyIdToIdentityMap.get(extractedPublicKeyId);
             byte[] decryptedAndVerifiedMsg;
 
             Derecmessage.DeRecMessage derecmessage = null;
@@ -547,11 +532,16 @@ class MessageFactory {
             // For PairRequest and PairResponse messages, the sender's signature key should be extracted from the received message
             if (derecmessage.hasMessageBodies() && derecmessage.getMessageBodies().hasSharerMessageBodies() &&
                     derecmessage.getMessageBodies().getSharerMessageBodies().getSharerMessageBody(0).hasPairRequestMessage()) {
+                // get the sharer's public signature key
                 senderSignaturePublicKey = derecmessage.getMessageBodies().getSharerMessageBodies().getSharerMessageBody(0).getPairRequestMessage().getPublicSignatureKey();
             } else if (derecmessage.hasMessageBodies() && derecmessage.getMessageBodies().hasHelperMessageBodies() && derecmessage.getMessageBodies().getHelperMessageBodies().getHelperMessageBody(0).hasPairResponseMessage()) {
+                // get the helper's public signature key
                 senderSignaturePublicKey = derecmessage.getMessageBodies().getHelperMessageBodies().getHelperMessageBody(0).getPairResponseMessage().getPublicSignatureKey();
             } else {
-                senderSignaturePublicKey = peerDeRecIdentity.getPublicSignatureKey();
+                // get the message sender's public signature key by referencing messageHashToIdentityMap
+                DeRecIdentity senderDeRecIdentity = LibState.getInstance().messageHashToIdentityMap.get(derecmessage.getSender());
+                senderSignaturePublicKey = senderDeRecIdentity.getPublicSignatureKey();
+                logger.debug("Sender " + senderDeRecIdentity.getName() + " public signature key is " + senderSignaturePublicKey);
             }
             byte[] verificationResult = LibState.getInstance().getDerecCryptoImpl().verify(msgToParse, signatureBytes, Base64.getDecoder().decode(senderSignaturePublicKey));
             staticLogger.debug("verify returned: " + verificationResult);

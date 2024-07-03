@@ -26,9 +26,8 @@ public class GetShareMessages {
         Logger staticLogger = LoggerFactory.getLogger(GetShareMessages.class.getName());
         Derecmessage.DeRecMessage deRecMessage = createGetShareRequestMessage(senderId, receiverId, currentSecretId,
                 recoveringSecretId, shareVersion);
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, currentSecretId,
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), true, currentSecretId,
                 receiverId, true);
-//        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         staticLogger.debug("***** In sendGetShareRequestMessage sending GetShareRequest to " + receiverId.getName() +
                 " for version " + shareVersion);
         sendHttpRequest(receiverId.getAddress(), msgBytes);
@@ -46,9 +45,8 @@ public class GetShareMessages {
                 result, committedDeRecShare);
         staticLogger.debug("Generated response: ");
         MessageParser.printDeRecMessage(deRecMessage, "Sending messsage ");
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, currentSecretId,
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), false, currentSecretId,
                 receiverId, true);
-//        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 

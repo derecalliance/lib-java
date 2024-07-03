@@ -55,7 +55,7 @@ class PairMessages {
                  message);
 
          var sharerIdentity =  Optional.of(new DeRecIdentity(name.get(),
-                 contact.get(), address.get(),
+                 contact.get(), address.get(), message.getPublicKeyId(),
                  message.getPublicEncryptionKey(), message.getPublicSignatureKey()));
          sharerIdentity.ifPresent(id ->  LibState.getInstance().messageHashToIdentityMap.put(ByteString.copyFrom(id.getPublicEncryptionKeyDigest()),
                  id));
@@ -122,6 +122,8 @@ class PairMessages {
              if (sharerId.isEmpty()) {
                  return;
              }
+             staticLogger.debug("Created DeRecIdentity: " + sharerId.get());
+
              LibState.getInstance().registerPublicKeyId(publicKeyId, sharerId.get());
              LibState.getInstance().printPublicKeyIdToIdentityMap();
              SharerStatusImpl sharerStatus = new SharerStatusImpl(sharerId.get());
@@ -243,10 +245,7 @@ class PairMessages {
 
 
 
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId, false);
-
-//        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
-
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), true, secretId, receiverId, false);
 
 //        System.out.print("------ sending wire bytes: ");
 //        for (int i = 0; i < 20; i++) {
@@ -273,8 +272,7 @@ class PairMessages {
                 result, senderKind, publicSignatureKey,
                 communicationInfo, nonce, parameterRange);
 
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId, false);
-//        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), false, secretId, receiverId, false);
         sendHttpRequest(toUri, msgBytes);
     }
 }

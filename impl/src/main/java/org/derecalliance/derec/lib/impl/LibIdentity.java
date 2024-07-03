@@ -77,7 +77,7 @@ public class LibIdentity  {
                        String encryptionPrivateKey, String encryptionPublicKey, String signaturePrivateKey,
                        String signaturePublicKey, int publicEncryptionKeyId, int publicSignatureKeyId) {
         try {
-            myId = new DeRecIdentity(name, contact, address, encryptionPublicKey, signaturePublicKey);
+            myId = new DeRecIdentity(name, contact, address, publicEncryptionKeyId, encryptionPublicKey, signaturePublicKey);
             LibState.getInstance().messageHashToIdentityMap.put(ByteString.copyFrom(myId.getPublicEncryptionKeyDigest()),
                     myId);
             setKeys(encryptionPrivateKey, encryptionPublicKey, signaturePrivateKey,
