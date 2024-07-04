@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RecoveredState {
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
-    LibIdentity sharerIdentity;
+//    LibIdentity sharerIdentity;
     ConcurrentHashMap<String, Integer> helperPublicEncryptionKeyToPublicKeyIdMap = new ConcurrentHashMap<>();
     ConcurrentHashMap<DeRecSecret.Id, SecretImpl> secretsMap = new ConcurrentHashMap<>();
 
@@ -19,9 +19,9 @@ public class RecoveredState {
             secretsMap.put(secret.getSecretId(), secret);
         }
     }
-    public void setSharerIdentity(LibIdentity sharerIdentity) {
-        this.sharerIdentity = sharerIdentity;
-    }
+//    public void setSharerIdentity(LibIdentity sharerIdentity) {
+//        this.sharerIdentity = sharerIdentity;
+//    }
 
     public void registerHelperPublicEncryptionKeyAndPublicKeyId(String helperPublicEncryptionKey,
                                                                 Integer helperPublicKeyId) {
@@ -35,9 +35,9 @@ public class RecoveredState {
         return helperPublicEncryptionKeyToPublicKeyIdMap;
     }
 
-    public LibIdentity getSharerIdentity() {
-        return sharerIdentity;
-    }
+//    public LibIdentity getSharerIdentity() {
+//        return sharerIdentity;
+//    }
 
     public ConcurrentHashMap<DeRecSecret.Id, SecretImpl> getSecretsMap() {
         return secretsMap;

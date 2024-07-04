@@ -59,20 +59,22 @@ public class HelperStatusImpl implements DeRecHelperStatus {
 
 
     void startPairing(DeRecSecret.Id secretId, DeRecIdentity receiverId, long nonce) {
-        if (secretId == null) {
+
+        SecretImpl secret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
+        if (secretId == null || secret == null) {
             return;
         }
-        logger.debug("My name: " + LibState.getInstance().getMeSharer().getMyLibId().getMyId().getName());
-        Communicationinfo.CommunicationInfo communicationInfo = buildCommunicationInfo(LibState.getInstance().getMeSharer().getMyLibId());
+        logger.debug("My name: " + secret.getLibId().getMyId().getName());
+        Communicationinfo.CommunicationInfo communicationInfo = buildCommunicationInfo(secret.getLibId());
 
         PairMessages.sendPairRequestMessage(
-                LibState.getInstance().getMeSharer().getMyLibId().getMyId(),
+                secret.getLibId().getMyId(),
                 receiverId, secretId,
                 id.getAddress(),
                 secret.isRecovering() ?  Pair.SenderKind.SHARER_RECOVERY : Pair.SenderKind.SHARER_NON_RECOVERY,
-                LibState.getInstance().getMeSharer().getMyLibId().getSignaturePublicKey(),
-                LibState.getInstance().getMeSharer().getMyLibId().getEncryptionPublicKey(),
-                LibState.getInstance().getMeSharer().getMyLibId().getPublicEncryptionKeyId(),
+                secret.getLibId().getSignaturePublicKey(),
+                secret.getLibId().getEncryptionPublicKey(),
+                secret.getLibId().getPublicEncryptionKeyId(),
                 communicationInfo,
                 nonce,
                 LibState.getInstance().getMeSharer().getParameterRange());

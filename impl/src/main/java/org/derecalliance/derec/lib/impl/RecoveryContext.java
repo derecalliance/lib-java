@@ -89,7 +89,7 @@ public class RecoveryContext {
     public void evaluateAndSendGetShareRequests(DeRecSecret.Id dummySecretId) {
         // TODO: Check if the secretId for which we are sending Get Share Request is already recovered. If that's the
         //  case, don't send the request.
-        DeRecSecret dummySecret = LibState.getInstance().getMeSharer().getSecret(dummySecretId);
+        SecretImpl dummySecret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(dummySecretId);
 
         if (dummySecret.isRecovering() == false) {
             logger.debug("evaluateAndSendGetShareRequests: returning because isRecovering=false: " + dummySecretId);
@@ -128,7 +128,7 @@ public class RecoveryContext {
 
                         // send GetShare message
                         GetShareMessages.sendGetShareRequestMessage(
-                                LibState.getInstance().getMeSharer().getMyLibId().getMyId(), helperToSend.getId(),
+                                dummySecret.getLibId().getMyId(), helperToSend.getId(),
                                 dummySecretId, recoveringSecretId,
                                 LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(),
                                 versionNumber);
@@ -202,8 +202,7 @@ public class RecoveryContext {
 
             // Now that we have successfully recombined, remove the shares from retrievedCommittedDeRecShares
             retrievedCommittedDeRecShares.get(secretId).put(versionNumber, new HashMap<>());
-            parseSecretMessage(LibState.getInstance().getMeSharer().getRecoveredState(), secretId, valueToProtect);
-
+            parseSecretMessage(LibState.getInstance().getMeSharer(), LibState.getInstance().getMeSharer().getRecoveredState(), secretId, valueToProtect);
 
 
             // TODO TODORECOVER move this to when user clicks on "recovery complete" button

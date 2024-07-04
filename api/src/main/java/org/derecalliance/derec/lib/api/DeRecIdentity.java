@@ -134,15 +134,6 @@ public class DeRecIdentity {
         this.publicSignatureKeyDigest = messageDigest.digest(Base64.getDecoder().decode(publicSignatureKey));
     }
 
-    /**
-     * Used to set the publicEncryptionKeyId of the helper after receiving their Contact
-     * @param publicEncryptionKeyId public encryption key id
-     */
-    public void setPublicEncryptionKeyId(int publicEncryptionKeyId) {
-        this.publicEncryptionKeyId = publicEncryptionKeyId;
-    }
-
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -150,6 +141,7 @@ public class DeRecIdentity {
         return Objects.equals(getName(), deRecId.getName()) &&
                 Objects.equals(getContact(), deRecId.getContact()) &&
                 Objects.equals(getAddress(), deRecId.getAddress()) &&
+                Objects.equals(getPublicEncryptionKeyId(), deRecId.getPublicEncryptionKeyId()) &&
                 Objects.equals(getPublicEncryptionKey(), deRecId.getPublicEncryptionKey()) &&
                 Objects.equals(getPublicSignatureKey(), deRecId.getPublicSignatureKey());
     }
@@ -157,7 +149,8 @@ public class DeRecIdentity {
     public boolean equalsKey(Object o) {
         if (this == o) return true;
         if (!(o instanceof DeRecIdentity deRecId)) return false;
-        return Objects.equals(getPublicEncryptionKey(), deRecId.getPublicEncryptionKey()) &&
+        return Objects.equals(getPublicEncryptionKeyId(), deRecId.getPublicEncryptionKeyId()) &&
+                Objects.equals(getPublicEncryptionKey(), deRecId.getPublicEncryptionKey()) &&
                 Objects.equals(getPublicSignatureKey(), deRecId.getPublicSignatureKey());
     }
 

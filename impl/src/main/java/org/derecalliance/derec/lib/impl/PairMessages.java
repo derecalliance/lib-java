@@ -47,7 +47,7 @@ class PairMessages {
 
          return val;
      }
-     public static Optional<DeRecIdentity> createIdentityFromPairRequest(Pair.PairRequestMessage message) {
+     public static Optional<DeRecIdentity> createIdentityFromPairRequest(DeRecSecret.Id secretId, Pair.PairRequestMessage message) {
          Optional<String> name = extractFromCommunicationInfo("name", message);
          Optional<String> address = extractFromCommunicationInfo("address",
                  message);
@@ -57,8 +57,10 @@ class PairMessages {
          var sharerIdentity =  Optional.of(new DeRecIdentity(name.get(),
                  contact.get(), address.get(), message.getPublicKeyId(),
                  message.getPublicEncryptionKey(), message.getPublicSignatureKey()));
-         sharerIdentity.ifPresent(id ->  LibState.getInstance().messageHashToIdentityMap.put(ByteString.copyFrom(id.getPublicEncryptionKeyDigest()),
-                 id));
+//         sharerIdentity.ifPresent(id ->  LibState.getInstance().messageHashToIdentityMap.put(ByteString.copyFrom(id.getPublicEncryptionKeyDigest()),
+//                 id));
+         sharerIdentity.ifPresent(id ->  LibState.getInstance().registerMessageHashAndSecretIdToIdentity(ByteString.copyFrom(id.getPublicEncryptionKeyDigest()),
+                 secretId, id));
          return sharerIdentity;
 
      }
@@ -118,13 +120,13 @@ class PairMessages {
              Communicationinfo.CommunicationInfo communicationInfo =
                      buildCommunicationInfo(LibState.getInstance().getMeHelper().getMyLibId());
 
-             Optional<DeRecIdentity> sharerId = createIdentityFromPairRequest(message);
+             Optional<DeRecIdentity> sharerId = createIdentityFromPairRequest(new DeRecSecret.Id(secretId), message);
              if (sharerId.isEmpty()) {
                  return;
              }
              staticLogger.debug("Created DeRecIdentity: " + sharerId.get());
 
-             LibState.getInstance().registerPublicKeyId(publicKeyId, sharerId.get());
+//             LibState.getInstance().registerPublicKeyId(publicKeyId, sharerId.get());
              LibState.getInstance().printPublicKeyIdToIdentityMap();
              SharerStatusImpl sharerStatus = new SharerStatusImpl(sharerId.get());
              sharerStatus.setRecovering(message.getSenderKind() == Pair.SenderKind.SHARER_RECOVERY);
@@ -180,7 +182,7 @@ class PairMessages {
                          .filter(hs -> hs.getId().getPublicEncryptionKey().equals(senderId.getPublicEncryptionKey()))
                          .findFirst();
                  HelperStatusImpl helperStatus = match.get();
-                 LibState.getInstance().registerPublicKeyId(publicKeyId, helperStatus.getId());
+//                 LibState.getInstance().registerPublicKeyId(publicKeyId, helperStatus.getId());
                  LibState.getInstance().printPublicKeyIdToIdentityMap();
                  staticLogger.debug("Got signature key: " + message.getPublicSignatureKey() + " for " + helperStatus.getId().getName());
                  helperStatus.getId().setPublicSignatureKey(message.getPublicSignatureKey());

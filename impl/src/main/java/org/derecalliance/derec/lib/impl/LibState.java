@@ -3,17 +3,12 @@ package org.derecalliance.derec.lib.impl;
 import com.google.protobuf.ByteString;
 import org.derecalliance.derec.crypto.DerecCryptoImpl;
 import org.derecalliance.derec.lib.api.*;
-import org.derecalliance.derec.lib.api.DeRecHelper;
-import org.derecalliance.derec.lib.api.DeRecSharer;
 //import org.derecalliance.derec.crypto.DerecCryptoImpl;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,30 +44,48 @@ public class LibState {
 
 
     // maps sender and receiver sha-384 hashes from incoming messages to sender and receiver DeRecIdentities
-    public HashMap<ByteString, DeRecIdentity> messageHashToIdentityMap = new HashMap();
-    public HashMap<Integer, DeRecIdentity> publicKeyIdToIdentityMap = new HashMap();
+    public HashMap<ByteString, HashMap<DeRecSecret.Id, DeRecIdentity>> messageHashAndSecretIdToIdentityMap = new HashMap();
+    public HashMap<Integer, LibIdentity> publicKeyIdToLibIdentityMap = new HashMap();
 
-
+    public void registerMessageHashAndSecretIdToIdentity(ByteString messageHash, DeRecSecret.Id secretId, DeRecIdentity deRecIdentity) {
+        if (messageHashAndSecretIdToIdentityMap.get(messageHash) == null) {
+            messageHashAndSecretIdToIdentityMap.put(messageHash, new HashMap<>());
+        }
+        messageHashAndSecretIdToIdentityMap.get(messageHash).put(secretId, deRecIdentity);
+        printMessageHashToIdentityMap();
+    }
+    public DeRecIdentity queryMessageHashAndSecretIdToIdentity(ByteString messageHash, DeRecSecret.Id secretId) {
+        try {
+            return messageHashAndSecretIdToIdentityMap.get(messageHash).get(secretId);
+        } catch (Exception ex) {
+            logger.error("No entry in messageHashAndSecretIdToIdentityMap for Message hash: " + messageHash + ", Secret.Id: " + secretId);
+            printMessageHashToIdentityMap();
+            return null;
+        }
+    }
     public void printMessageHashToIdentityMap() {
         logger.debug("printMessageHashToIdentityMap");
-        for (ByteString key : messageHashToIdentityMap.keySet()) {
-            logger.debug("Key: " + Base64.getEncoder().encodeToString(key.toByteArray()) + " -> " +  messageHashToIdentityMap.get(key));
+        for (var hashEntry : messageHashAndSecretIdToIdentityMap.entrySet()) {
+            for (var secretEntry: hashEntry.getValue().entrySet()) {
+                logger.debug("Key: " + Base64.getEncoder().encodeToString(hashEntry.getKey().toByteArray()) + " -> Secret: " +
+                        (secretEntry.getKey() == null ? "null" : secretEntry.getKey().toString()) + " -> " + secretEntry.getValue());
+            }
         }
         logger.debug("---- End of printMessageHashToIdentityMap ----");
     }
 
     public void printPublicKeyIdToIdentityMap() {
         logger.debug("printPublicKeyIdToIdentityMap");
-        for (Integer key : publicKeyIdToIdentityMap.keySet()) {
-            logger.debug("Public Key ID: " + key + " -> " + publicKeyIdToIdentityMap.get(key));
+        for (Integer key : publicKeyIdToLibIdentityMap.keySet()) {
+            logger.debug("Public Key ID: " + key + " -> " + publicKeyIdToLibIdentityMap.get(key));
         }
         logger.debug("---- End of printPublicKeyIdToIdentityMap ----");
     }
 
-    public void registerPublicKeyId(Integer publicKeyId, DeRecIdentity deRecIdentity) {
+    public void registerPublicKeyId(Integer publicKeyId, LibIdentity libIdentity) {
         logger.debug("In registerPublicKeyId, before:");
         printPublicKeyIdToIdentityMap();
-        publicKeyIdToIdentityMap.put(publicKeyId, deRecIdentity);
+        publicKeyIdToLibIdentityMap.put(publicKeyId, libIdentity);
         logger.debug("In registerPublicKeyId, after:");
         printPublicKeyIdToIdentityMap();
     }
@@ -135,7 +148,7 @@ public class LibState {
 //        assert(recovered_value.equals("top_secret"));
 //        logger.debug(recovered_value);
 //    }
-    public void init(String uri) {
+    public void init(String contact, String address) {
 //        cryptoMain();
 
         logger.debug("Debug log");
@@ -144,7 +157,7 @@ public class LibState {
         logger.error("Error log");
         if (!httpServerStarted) {
             try {
-                startHttpServer(new URI(uri));
+                startHttpServer(new URI(address));
                 httpServerStarted = true;
                 if (getMeSharer() != null) {
                     logger.debug("Init starting periodic task runner for the sharer");
@@ -158,10 +171,10 @@ public class LibState {
 
     }
 
-    public void startHttpServer(URI uri) {
+    public void startHttpServer(URI address) {
         try {
             if (hServer == null) {
-                hServer = new ProtobufHttpServer(uri);
+                hServer = new ProtobufHttpServer(address);
             }
         } catch (Exception ex) {
             logger.error("Could not start http server\n", ex);
@@ -219,9 +232,9 @@ public class LibState {
         this.meHelper = meHelper;
     }
 
-    public synchronized void setMyHelperAndSharerId(LibIdentity libIdentity) {
-        this.myHelperAndSharerId = libIdentity;
-    }
+//    public synchronized void setMyHelperAndSharerId(LibIdentity libIdentity) {
+//        this.myHelperAndSharerId = libIdentity;
+//    }
 
     public DerecCryptoImpl getDerecCryptoImpl() {
         return derecCryptoImpl;

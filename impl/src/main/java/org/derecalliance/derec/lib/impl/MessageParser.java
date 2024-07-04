@@ -31,15 +31,19 @@ class MessageParser {
          String senderDigest = Base64.getEncoder().encodeToString(message.getSender().toByteArray());
          String receiverDigest = Base64.getEncoder().encodeToString(message.getReceiver().toByteArray());
          String secret = Base64.getEncoder().encodeToString(message.getSecretId().toByteArray());
-        DeRecIdentity senderId = LibState.getInstance().messageHashToIdentityMap.get(message.getSender());
-        DeRecIdentity receiverId = LibState.getInstance().messageHashToIdentityMap.get(message.getReceiver());
+//        DeRecIdentity senderId = LibState.getInstance().messageHashToIdentityMap.get(message.getSender());
+//        DeRecIdentity receiverId = LibState.getInstance().messageHashToIdentityMap.get(message.getReceiver());
+        DeRecIdentity senderId = LibState.getInstance().queryMessageHashAndSecretIdToIdentity(message.getSender(), new DeRecSecret.Id(message.getSecretId().toByteArray()));
+        DeRecIdentity receiverId = LibState.getInstance().queryMessageHashAndSecretIdToIdentity(message.getReceiver(), new DeRecSecret.Id(message.getSecretId().toByteArray()));
+
+
         LibState.getInstance().printMessageHashToIdentityMap();
 
         if (senderId == null) {
-            logger.error("printDeRecMessage: Could not find an entry in hashToIdentityMap for sender " + senderDigest);
+            logger.error("printDeRecMessage: Could not find an entry in hashToIdentityMap for sender " + Base64.getEncoder().encodeToString(senderDigest.getBytes()));
         }
         if (receiverId == null) {
-            logger.error("printDeRecMessage: Could not find an entry in hashToIdentityMap for receiver " + receiverDigest);
+            logger.error("printDeRecMessage: Could not find an entry in hashToIdentityMap for receiver " + Base64.getEncoder().encodeToString(receiverDigest.getBytes()));
         }
          logger.info(description + ",Sender: " + senderDigest + " ("  +
                  (senderId == null ? "unknown" : senderId.getName()) + "), Receiver: " + receiverDigest + " (" +
@@ -136,25 +140,33 @@ class MessageParser {
          }
          byte[] secretId = message.getSecretId().toByteArray();
          ByteString senderHash = message.getSender();
-         DeRecIdentity senderId = LibState.getInstance().messageHashToIdentityMap.get(senderHash);
+//         DeRecIdentity senderId = LibState.getInstance().messageHashToIdentityMap.get(senderHash);
+         DeRecIdentity senderId = LibState.getInstance().queryMessageHashAndSecretIdToIdentity(senderHash, new DeRecSecret.Id(secretId));
          if (senderId == null) {
-             logger.debug("Could not find an entry in hashToIdentityMap for sender " + senderHash);
+             logger.debug("Could not find an entry in hashToIdentityMap for sender " + Base64.getEncoder().encodeToString(senderHash.toByteArray()));
 
              LibState.getInstance().printMessageHashToIdentityMap();
-             if (!(message.hasMessageBodies() &&
+
+             boolean isPairRequestMessage = message.hasMessageBodies() &&
                      message.getMessageBodies().hasSharerMessageBodies() &&
                      message.getMessageBodies().getSharerMessageBodies().getSharerMessageBodyList().size() == 1 &&
-                     message.getMessageBodies().getSharerMessageBodies().getSharerMessageBodyList().get(0).hasPairRequestMessage())) {
+                     message.getMessageBodies().getSharerMessageBodies().getSharerMessageBodyList().get(0).hasPairRequestMessage();
+
+             if (! isPairRequestMessage) {
                  logger.debug("Dropping message");
                  return;
              } else {
                  logger.debug("Found null sender, but for a PairRequest - allowing the message to go through");
              }
          }
+         boolean isSharerMessage = message.hasMessageBodies() && message.getMessageBodies().hasSharerMessageBodies();
+
          ByteString receiverHash = message.getReceiver();
-         DeRecIdentity receiverId = LibState.getInstance().messageHashToIdentityMap.get(receiverHash);
+//         DeRecIdentity receiverId = LibState.getInstance().messageHashToIdentityMap.get(receiverHash);
+         DeRecIdentity receiverId = LibState.getInstance().queryMessageHashAndSecretIdToIdentity(receiverHash, isSharerMessage ? null : new DeRecSecret.Id(message.getSecretId().toByteArray()));
+
          if (receiverId == null) {
-             logger.info("Could not find an entry in hashToIdentityMap for receiver " + receiverHash);
+             logger.info("Could not find an entry in hashToIdentityMap for receiver " + Base64.getEncoder().encodeToString(receiverHash.toByteArray()));
              logger.info("Dropping message");
              LibState.getInstance().printMessageHashToIdentityMap();
              return;
