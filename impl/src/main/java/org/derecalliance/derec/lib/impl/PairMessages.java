@@ -144,12 +144,8 @@ class PairMessages {
                     staticLogger.error("Error: got no reference object");
                     return; // TODO: Handle this better - maybe send a pairing response with an appropriate error code
                 }
-                LibState.getInstance().getMeHelper().registerIdentityReconciliation(sharerId.get().getPublicEncryptionKey(), (SharerStatusImpl) uiResponse.getReferenceObject());
+                LibState.getInstance().getMeHelper().registerIdentityReconciliation(sharerId.get().getPublicEncryptionKey(), (List<SharerStatusImpl>) uiResponse.getReferenceObject());
                 LibState.getInstance().getMeHelper().printPublicKeyToLostSharerMap();
-                 if (uiResponse.getResult()) {
-                     staticLogger.debug("Got uiResponse DeRecIdentity: " + uiResponse.getResult());
-                 }
-
              }
 
 

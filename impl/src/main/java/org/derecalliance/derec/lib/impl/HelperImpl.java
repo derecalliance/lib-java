@@ -34,7 +34,7 @@ public class HelperImpl implements DeRecHelper {
     // previously stored shares, the helper must map the recovering sharer's public key to their previous lost
     // identity that they were helping.
     // Maps the public key of the recovering helper to their previous DeRecIdentity
-    public HashMap<String, SharerStatusImpl> publicKeyToLostSharerMap = new HashMap<>();
+    public HashMap<String, List<SharerStatusImpl>> publicKeyToLostSharerMap = new HashMap<>();
 
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
@@ -473,11 +473,11 @@ public class HelperImpl implements DeRecHelper {
         });
     }
 
-    public void registerIdentityReconciliation(String publicEncryptionKey, SharerStatusImpl sharerStatus) {
-        publicKeyToLostSharerMap.put(publicEncryptionKey, sharerStatus);
+    public void registerIdentityReconciliation(String publicEncryptionKey, List<SharerStatusImpl> sharerStatuses) {
+        publicKeyToLostSharerMap.put(publicEncryptionKey, sharerStatuses);
     }
 
-    public SharerStatusImpl getLostSharer(String publicEncryptionKey) {
+    public List<SharerStatusImpl> getLostSharers(String publicEncryptionKey) {
         return publicKeyToLostSharerMap.get(publicEncryptionKey);
     }
 

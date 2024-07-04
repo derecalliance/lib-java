@@ -75,26 +75,26 @@ public class GetSecretIdsVersionsMessages {
                 // the helper that has been lost
 //                SharerStatusImpl lostSharer = (SharerStatusImpl) LibState.getInstance().getMeHelper().getShares()
 //                        .get().getSharerStatus();
-                SharerStatusImpl lostSharer = LibState.getInstance().getMeHelper().getLostSharer(senderId.getPublicEncryptionKey());
-                if (lostSharer == null) {
+                List<SharerStatusImpl> lostSharers = LibState.getInstance().getMeHelper().getLostSharers(senderId.getPublicEncryptionKey());
+                if (lostSharers == null) {
                     staticLogger.info("Could not find lost sharer for " + senderId.getPublicEncryptionKey());
                     LibState.getInstance().getMeHelper().printPublicKeyToLostSharerMap();
                     found = false;
                 } else {
-                    staticLogger.debug("Looked up publicKey " + senderId.getPublicEncryptionKey() + " and found " + lostSharer);
+                    staticLogger.debug("Looked up publicKey " + senderId.getPublicEncryptionKey() + " and found " + lostSharers);
                     // Now find all shares that this lost sharer had stored and harvest secretIds and versionNumbers from
                     // these shares
                     for (ShareImpl share: (List<ShareImpl>)LibState.getInstance().getMeHelper().getShares()) {
-                        if (share.getSharer().getId().getPublicEncryptionKey().equals(lostSharer.getId().getPublicEncryptionKey())) {
-                            DeRecSecret.Id sid = share.getSecretId();
-                            if (!secretIdAndVersions.containsKey(sid)) {
-                                secretIdAndVersions.put(sid, new ArrayList<>());
-    //                            staticLogger.debug("Found previously stored secret " + new String(sid.getBytes(),
-    //                                    StandardCharsets.UTF_8));
-                                staticLogger.debug("Found previously stored secret " + Base64.getEncoder().encodeToString(sid.getBytes()));
-                                found = true;
+                        for (SharerStatusImpl lostSharer: lostSharers) {
+                            if (share.getSharer().getId().getPublicEncryptionKey().equals(lostSharer.getId().getPublicEncryptionKey())) {
+                                DeRecSecret.Id sid = share.getSecretId();
+                                if (!secretIdAndVersions.containsKey(sid)) {
+                                    secretIdAndVersions.put(sid, new ArrayList<>());
+                                    staticLogger.debug("Found previously stored secret " + Base64.getEncoder().encodeToString(sid.getBytes()));
+                                    found = true;
+                                }
+                                secretIdAndVersions.get(sid).add(share.getVersionNumber());
                             }
-                            secretIdAndVersions.get(sid).add(share.getVersionNumber());
                         }
                     }
                 }
