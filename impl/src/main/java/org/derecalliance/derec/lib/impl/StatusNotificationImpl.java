@@ -1,11 +1,10 @@
 package org.derecalliance.derec.lib.impl;
 
+import java.util.Optional;
 import org.derecalliance.derec.lib.api.DeRecHelperStatus;
 import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.derecalliance.derec.lib.api.DeRecStatusNotification;
 import org.derecalliance.derec.lib.api.DeRecVersion;
-
-import java.util.Optional;
 
 public class StatusNotificationImpl implements DeRecStatusNotification {
     NotificationType type;
@@ -15,8 +14,13 @@ public class StatusNotificationImpl implements DeRecStatusNotification {
     DeRecVersion version;
     DeRecHelperStatus helperStatus;
 
-    public StatusNotificationImpl(NotificationType type, NotificationSeverity severity, String message,
-                                  DeRecSecret secret, DeRecVersion version, DeRecHelperStatus helperStatus) {
+    public StatusNotificationImpl(
+            NotificationType type,
+            NotificationSeverity severity,
+            String message,
+            DeRecSecret secret,
+            DeRecVersion version,
+            DeRecHelperStatus helperStatus) {
         this.type = type;
         this.severity = severity;
         this.message = message;

@@ -10,6 +10,7 @@ public class MiscUtils {
     public static byte[] intToByteArray(int value) {
         return ByteBuffer.allocate(4).putInt(value).array();
     }
+
     public static int readInt(ByteArrayInputStream bais) {
         byte[] intBytes = new byte[4];
         bais.read(intBytes, 0, 4);

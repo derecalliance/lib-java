@@ -1,6 +1,10 @@
 package org.derecalliance.derec.lib.impl;
 
-//import org.derecalliance.derec.lib.LibState;
+// import org.derecalliance.derec.lib.LibState;
+import static org.derecalliance.derec.lib.impl.PairMessages.buildCommunicationInfo;
+import static org.derecalliance.derec.lib.impl.utils.MiscUtils.*;
+
+import java.time.Instant;
 import org.derecalliance.derec.lib.api.DeRecHelperStatus;
 import org.derecalliance.derec.lib.api.DeRecIdentity;
 import org.derecalliance.derec.lib.api.DeRecPairingStatus;
@@ -10,15 +14,7 @@ import org.derecalliance.derec.protobuf.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.time.Instant;
-
-import static org.derecalliance.derec.lib.impl.PairMessages.buildCommunicationInfo;
-import static org.derecalliance.derec.lib.impl.utils.MiscUtils.*;
-
-//import static org.derecalliance.derec.api.PairMessages.buildCommunicationInfo;
+// import static org.derecalliance.derec.api.PairMessages.buildCommunicationInfo;
 
 public class HelperStatusImpl implements DeRecHelperStatus {
     DeRecIdentity id;
@@ -31,7 +27,7 @@ public class HelperStatusImpl implements DeRecHelperStatus {
         this.id = id;
         this.secret = secret;
         pairingStatus = PairingStatus.NONE;
-//        startPairing(secret.getSecretId(), id, nonce);
+        //        startPairing(secret.getSecretId(), id, nonce);
     }
 
     @Override
@@ -57,7 +53,6 @@ public class HelperStatusImpl implements DeRecHelperStatus {
         this.pairingStatus = pairingStatus;
     }
 
-
     void startPairing(DeRecSecret.Id secretId, DeRecIdentity receiverId, long nonce) {
 
         SecretImpl secret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
@@ -69,9 +64,10 @@ public class HelperStatusImpl implements DeRecHelperStatus {
 
         PairMessages.sendPairRequestMessage(
                 secret.getLibId().getMyId(),
-                receiverId, secretId,
+                receiverId,
+                secretId,
                 id.getAddress(),
-                secret.isRecovering() ?  Pair.SenderKind.SHARER_RECOVERY : Pair.SenderKind.SHARER_NON_RECOVERY,
+                secret.isRecovering() ? Pair.SenderKind.SHARER_RECOVERY : Pair.SenderKind.SHARER_NON_RECOVERY,
                 secret.getLibId().getSignaturePublicKey(),
                 secret.getLibId().getEncryptionPublicKey(),
                 secret.getLibId().getPublicEncryptionKeyId(),
@@ -90,7 +86,7 @@ public class HelperStatusImpl implements DeRecHelperStatus {
     }
 
     public String toString() {
-        String str = "Helper Status for Derec id: " + id.toString()  + "\n";
+        String str = "Helper Status for Derec id: " + id.toString() + "\n";
         str += "Secret: id: " + secret.getSecretId().toString() + ", Description: " + secret.getDescription() + "\n";
         str += "Pairing status: " + pairingStatus.toString() + "\n";
         return str;

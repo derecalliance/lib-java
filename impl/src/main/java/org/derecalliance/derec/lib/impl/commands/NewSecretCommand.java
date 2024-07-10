@@ -1,18 +1,12 @@
 package org.derecalliance.derec.lib.impl.commands;
 
-import org.derecalliance.derec.lib.api.DeRecIdentity;
+import java.util.concurrent.CompletableFuture;
 import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.derecalliance.derec.lib.impl.Command;
 import org.derecalliance.derec.lib.impl.SecretImpl;
 import org.derecalliance.derec.lib.impl.SharerImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class NewSecretCommand implements Command {
     private final String description;

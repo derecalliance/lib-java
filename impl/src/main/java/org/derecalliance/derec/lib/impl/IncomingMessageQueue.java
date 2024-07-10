@@ -1,11 +1,10 @@
 package org.derecalliance.derec.lib.impl;
-import org.derecalliance.derec.protobuf.Derecmessage;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
+import org.derecalliance.derec.protobuf.Derecmessage;
 
 public class IncomingMessageQueue {
-    private static final ConcurrentLinkedQueue<Derecmessage.DeRecMessage> queue =
-            new ConcurrentLinkedQueue<>();
+    private static final ConcurrentLinkedQueue<Derecmessage.DeRecMessage> queue = new ConcurrentLinkedQueue<>();
 
     public void addRequest(Derecmessage.DeRecMessage message) {
         queue.add(message);

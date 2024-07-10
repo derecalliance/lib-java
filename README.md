@@ -10,3 +10,6 @@
 8. In the terminal, navigate to the root directory `dereclib`  and run `mvn clean compile package install`
 9. In the terminal, `dereclib/api` and run `mvn clean compile package install`
 10. In the terminal, `dereclib/impl` and run `mvn clean compile package install`
+
+## Formatting Files
+1. Run `mvn validate` in the `impl` directory to format all files if changes are made.

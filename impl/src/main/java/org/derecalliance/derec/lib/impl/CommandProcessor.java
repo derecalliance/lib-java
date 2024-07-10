@@ -1,10 +1,8 @@
 package org.derecalliance.derec.lib.impl;
 
+import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class CommandProcessor implements Runnable {
     private final BlockingQueue<Command> queue;
@@ -14,6 +12,7 @@ public class CommandProcessor implements Runnable {
     public CommandProcessor(BlockingQueue<Command> queue) {
         this.queue = queue;
     }
+
     @Override
     public void run() {
         try {
@@ -30,6 +29,6 @@ public class CommandProcessor implements Runnable {
 }
 
 //// Start the processor in a thread
-//BlockingQueue<Command> commandQueue = new LinkedBlockingQueue<>();
-//Thread processorThread = new Thread(new CommandProcessor(commandQueue));
-//processorThread.start();
+// BlockingQueue<Command> commandQueue = new LinkedBlockingQueue<>();
+// Thread processorThread = new Thread(new CommandProcessor(commandQueue));
+// processorThread.start();

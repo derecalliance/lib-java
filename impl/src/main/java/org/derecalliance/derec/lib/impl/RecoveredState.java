@@ -1,11 +1,9 @@
 package org.derecalliance.derec.lib.impl;
 
+import java.util.concurrent.ConcurrentHashMap;
 import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Contains the methods and data structures necessary to recover the state of the library in normal mode.

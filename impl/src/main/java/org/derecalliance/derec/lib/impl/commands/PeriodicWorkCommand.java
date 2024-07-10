@@ -1,10 +1,8 @@
 package org.derecalliance.derec.lib.impl.commands;
 
+import java.time.Instant;
 import org.derecalliance.derec.lib.impl.Command;
 import org.derecalliance.derec.lib.impl.PeriodicTaskRunner;
-import org.derecalliance.derec.lib.impl.ProtobufHttpServer;
-
-import java.time.Instant;
 
 public class PeriodicWorkCommand implements Command {
     private final Instant instant;
@@ -13,7 +11,7 @@ public class PeriodicWorkCommand implements Command {
         this.instant = instant;
     }
 
-        @Override
+    @Override
     public void execute() {
         PeriodicTaskRunner.processPeriodicWork(instant);
     }
