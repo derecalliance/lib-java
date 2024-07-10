@@ -5,6 +5,7 @@ package org.derecalliance.derec.lib.impl;
 import org.derecalliance.derec.lib.api.*;
 
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
@@ -22,18 +23,24 @@ import org.derecalliance.derec.lib.api.DeRecStatusNotification;
 //import org.derecalliance.derec.lib.LibIdentity;
 //import org.derecalliance.derec.lib.LibState;
 //import org.derecalliance.derec.lib.Version;
+import org.derecalliance.derec.lib.impl.commands.NewSecretCommand;
+import org.derecalliance.derec.lib.impl.commands.PeriodicWorkCommand;
 import org.derecalliance.derec.protobuf.Parameterrange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 public class SharerImpl implements DeRecSharer {
+//    LibIdentity myHelperAndSharerId;
+    String name;
+    String contact;
+    String address;
 
-            ConcurrentHashMap<DeRecSecret.Id, SecretImpl> secretsMap;
+    ConcurrentHashMap<DeRecSecret.Id, SecretImpl> secretsMap;
         //    PairingContext pairingContext;
         Parameterrange.ParameterRange parameterRange;
         //    DeRecIdentity mySharerId;
-        LibIdentity myLibId;
+//        LibIdentity myLibId;
 
         Consumer<DeRecStatusNotification> listener;
 
@@ -45,31 +52,41 @@ public class SharerImpl implements DeRecSharer {
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
 
-    public SharerImpl(String name, String uri) {
+    public SharerImpl(String name, String contact, String address) {
+        this.name = name;
+        this.contact = contact;
+        this.address = address;
             secretsMap = new ConcurrentHashMap<>();
             parameterRange = Parameterrange.ParameterRange.newBuilder().build();
-            // If a LibIdentity is already created for my role as a Helper, reuse that LibIdentity, otherwise create a
-            // new LibIdentity
-            if (LibState.getInstance().myHelperAndSharerId == null) {
-                logger.debug("SharerImpl: Creating new LibIdentity as a Sharer for " + name);
-                myLibId = new LibIdentity(name, uri, uri);
-                LibState.getInstance().myHelperAndSharerId = myLibId;
-            } else {
-                logger.debug("SharerImpl: Reusing Helper's LibIdentity as a Sharer for " + name);
-                myLibId = LibState.getInstance().myHelperAndSharerId;
-            }
-            LibState.getInstance().messageHashToIdentityMap.put(
-                    ByteString.copyFrom(myLibId.getMyId().getPublicEncryptionKeyDigest()), myLibId.getMyId());
-            logger.debug("Added myself (Sharer) " + name + " to messageHashToIdentityMap");
+//            // If a LibIdentity is already created for my role as a Helper, reuse that LibIdentity, otherwise create a
+//            // new LibIdentity
+//            if (LibState.getInstance().myHelperAndSharerId == null) {
+//                logger.debug("SharerImpl: Creating new LibIdentity as a Sharer for " + name);
+//                myLibId = new LibIdentity(name, uri, uri);
+////                LibState.getInstance().myHelperAndSharerId = myLibId;
+//
+//            } else {
+//                logger.debug("SharerImpl: Reusing Helper's LibIdentity as a Sharer for " + name);
+//                myLibId = LibState.getInstance().myHelperAndSharerId;
+//            }
 
-        LibState.getInstance().printMessageHashToIdentityMap();
+        // Register in the messageHashAndSecretIdToIdentityMap table for self id.
+        // Since we are a sharer, but we don't have a secret id yet, hence register with a null secret id
+//            LibState.getInstance().messageHashToIdentityMap.put(
+//                    ByteString.copyFrom(myLibId.getMyId().getPublicEncryptionKeyDigest()), myLibId.getMyId());
+//        // TODO-PerSecretKeys -> move this to when a secret is created in a sharer
+//        LibState.getInstance().registerMessageHashAndSecretIdToIdentity(
+//                ByteString.copyFrom(myLibId.getMyId().getPublicEncryptionKeyDigest()), null, myLibId.getMyId());
+//            logger.debug("Added myself (Sharer) " + name + " to messageHashToIdentityMap");
+
+//        LibState.getInstance().printMessageHashToIdentityMap();
 
             LibState.getInstance().setMeSharer(this);
             recoveryContext = new RecoveryContext();
             recoveredState = new RecoveredState();
 
             listener = notification -> {};
-            LibState.getInstance().init(uri);
+            LibState.getInstance().init(contact, address);
         }
 
         @Override
@@ -87,14 +104,15 @@ public class SharerImpl implements DeRecSharer {
         }
 
         @Override
-        public DeRecSecret newSecret(String description,
-                                     byte[] bytesToProtect, boolean recovery) {
-            var secret = new SecretImpl(description,bytesToProtect,recovery);
-            synchronized (secretsMap) {
-                secretsMap.put(secret.getSecretId(), secret);
+        public DeRecSecret newSecret(String description, byte[] bytesToProtect, boolean recovery) {
+            NewSecretCommand command = new NewSecretCommand(this, description, bytesToProtect, recovery);
+            LibState.getInstance().getCommandQueue().add(command);
+            try {
+                return command.getFuture().get();
+            } catch(Exception ex) {
+                logger.error("Exception in newSecret.", ex);
+                return null;
             }
-            printSecretsMap();
-            return secret;
         }
 
         @Override
@@ -102,6 +120,15 @@ public class SharerImpl implements DeRecSharer {
             logger.debug("Not implemented\n");
             Thread.currentThread().getStackTrace();
             return null;
+        }
+
+        public SecretImpl processNewSecret(String description, byte[] bytesToProtect, boolean recovery) {
+            var secret = new SecretImpl(description, bytesToProtect, recovery);
+            synchronized (secretsMap) {
+                secretsMap.put(secret.getSecretId(), secret);
+            }
+            printSecretsMap();
+            return secret;
         }
 
         @Override
@@ -140,9 +167,9 @@ public class SharerImpl implements DeRecSharer {
             return parameterRange;
         }
 
-        public LibIdentity getMyLibId() {
-            return myLibId;
-        }
+//        public LibIdentity getMyLibId() {
+//            return myLibId;
+//        }
 
         public void installRecoveredSecret(SecretImpl secret) {
             secretsMap.put(secret.getSecretId(), secret);
@@ -166,33 +193,52 @@ public class SharerImpl implements DeRecSharer {
 
         for (SecretImpl recoveredSecret : recoveredState.getSecretsMap().values()) {
             for (DeRecHelperStatus helperStatus : recoveredSecret.getHelperStatuses()) {
-                // Update the publicKeyId <-> identity map
-                DeRecIdentity recoveredHelperId = helperStatus.getId();
-                if (recoveredState.getHelperPublicEncryptionKeyToPublicKeyIdMap().containsKey(recoveredHelperId.getPublicEncryptionKey())) {
-                    LibState.getInstance().registerPublicKeyId(
-                            recoveredState.getHelperPublicEncryptionKeyToPublicKeyIdMap().get(recoveredHelperId.getPublicEncryptionKey()),
-                            recoveredHelperId);
-                    logger.debug("recoveryComplete: Added entry to publicKeyIdToIdentityMap for " + recoveredHelperId.getName() + ", " +
-                            "publicKeyId = "
-                            + recoveredState.getHelperPublicEncryptionKeyToPublicKeyIdMap().get(recoveredHelperId.getPublicEncryptionKey()));
-                    LibState.getInstance().printPublicKeyIdToIdentityMap();
-                } else {
-                    logger.debug("recoveryComplete: Entry not found for key: " + recoveredHelperId.getPublicEncryptionKey());
-                }
+//                // Update the publicKeyId <-> identity map
+//                DeRecIdentity recoveredHelperId = helperStatus.getId();
+//                if (recoveredState.getHelperPublicEncryptionKeyToPublicKeyIdMap().containsKey(recoveredHelperId.getPublicEncryptionKey())) {
+//                    LibState.getInstance().registerPublicKeyId(
+//                            recoveredState.getHelperPublicEncryptionKeyToPublicKeyIdMap().get(recoveredHelperId.getPublicEncryptionKey()),
+//                            recoveredHelperId);
+//                    logger.debug("recoveryComplete: Added entry to publicKeyIdToIdentityMap for " + recoveredHelperId.getName() + ", " +
+//                            "publicKeyId = "
+//                            + recoveredState.getHelperPublicEncryptionKeyToPublicKeyIdMap().get(recoveredHelperId.getPublicEncryptionKey()));
+//                    LibState.getInstance().printPublicKeyIdToIdentityMap();
+//                } else {
+//                    logger.debug("recoveryComplete: Entry not found for key: " + recoveredHelperId.getPublicEncryptionKey());
+//                }
+
+
+                // Install the original helpers' messageHashes
+                logger.debug("During recovery, installing in registerMessageHashAndSecretIdToIdentity: " + helperStatus.getId().getName());
+                LibState.getInstance().registerMessageHashAndSecretIdToIdentity( ByteString.copyFrom(helperStatus.getId().getPublicEncryptionKeyDigest()), recoveredSecret.getSecretId(), helperStatus.getId());
             }
+
+
+            // TODO-PerSecretKeys Move this in the loop above, and call LibState.getInstance().registerMessageHashAndSecretIdToIdentity();
+
+            // Set my DeRec identity and keys from the recovered information
+//            LibState.getInstance().getMeSharer().getMyLibId().setVariables(
+//                    recoveredState.getSharerIdentity().getMyId().getName(),
+//                    recoveredState.getSharerIdentity().getMyId().getContact(),
+//                    recoveredState.getSharerIdentity().getMyId().getAddress(),
+//                    recoveredState.getSharerIdentity().getEncryptionPrivateKey(),
+//                    recoveredState.getSharerIdentity().getEncryptionPublicKey(),
+//                    recoveredState.getSharerIdentity().getSignaturePrivateKey(),
+//                    recoveredState.getSharerIdentity().getSignaturePublicKey(),
+//                    recoveredState.getSharerIdentity().getPublicEncryptionKeyId(),
+//                    recoveredState.getSharerIdentity().getPublicSignatureKeyId());
+
+            // Install this secret's libIdentity in the publicKeyIdToLibIdentityMap
+            logger.debug("Installing secret's id in publicKeyIdToLibIdentityMap");
+            LibState.getInstance().registerPublicKeyId(recoveredSecret.getLibId().getPublicEncryptionKeyId(), recoveredSecret.getLibId());
+
+            // Install own libIdentity in the messageHashAndSecretIdToIdentityMap
+            logger.debug("During recovery, installing own identity in registerMessageHashAndSecretIdToIdentity: " + recoveredSecret.getLibId().getMyId().getName());
+            LibState.getInstance().registerMessageHashAndSecretIdToIdentity( ByteString.copyFrom(recoveredSecret.getLibId().getMyId().getPublicEncryptionKeyDigest()), recoveredSecret.getSecretId(), recoveredSecret.getLibId().getMyId());
+
         }
 
-        // Set my DeRec identity and keys from the recovered information
-        LibState.getInstance().getMeSharer().getMyLibId().setVariables(
-                recoveredState.getSharerIdentity().getMyId().getName(),
-                recoveredState.getSharerIdentity().getMyId().getContact(),
-                recoveredState.getSharerIdentity().getMyId().getAddress(),
-                recoveredState.getSharerIdentity().getEncryptionPrivateKey(),
-                recoveredState.getSharerIdentity().getEncryptionPublicKey(),
-                recoveredState.getSharerIdentity().getSignaturePrivateKey(),
-                recoveredState.getSharerIdentity().getSignaturePublicKey(),
-                recoveredState.getSharerIdentity().getPublicEncryptionKeyId(),
-                recoveredState.getSharerIdentity().getPublicSignatureKeyId());
+
 
 
 
@@ -236,4 +282,18 @@ public class SharerImpl implements DeRecSharer {
                     helperStatus);
             listener.accept(notification);
         }
+
+    public String getName() {
+        return name;
     }
+
+    public String getContact() {
+        return contact;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+}
+
+

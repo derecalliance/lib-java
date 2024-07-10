@@ -34,7 +34,7 @@ public class HelperImpl implements DeRecHelper {
     // previously stored shares, the helper must map the recovering sharer's public key to their previous lost
     // identity that they were helping.
     // Maps the public key of the recovering helper to their previous DeRecIdentity
-    public HashMap<String, SharerStatusImpl> publicKeyToLostSharerMap = new HashMap<>();
+    public HashMap<String, List<SharerStatusImpl>> publicKeyToLostSharerMap = new HashMap<>();
 
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
@@ -95,26 +95,31 @@ public class HelperImpl implements DeRecHelper {
 
 
 
-    public HelperImpl(String name, String uri) {
+    public HelperImpl(String name, String contact, String address) {
         recdCommittedDeRecShares = new ConcurrentHashMap<>();
-        // If a LibIdentity is already created for my role as a Sharer, reuse that LibIdentity, otherwise create a
-        // new LibIdentity
-        if (LibState.getInstance().myHelperAndSharerId == null) {
-            logger.debug("HelperImpl: Creating new LibIdentity as a Helper for " + name);
-            myLibId = new LibIdentity(name, uri, uri);
-            LibState.getInstance().myHelperAndSharerId = myLibId;
-        } else {
-            logger.debug("HelperImpl: Reusing Sharer's LibIdentity as a Helper for " + name);
-            myLibId = LibState.getInstance().myHelperAndSharerId;
-        }
+//        // If a LibIdentity is already created for my role as a Sharer, reuse that LibIdentity, otherwise create a
+//        // new LibIdentity
+//        if (LibState.getInstance().myHelperAndSharerId == null) {
+//            logger.debug("HelperImpl: Creating new LibIdentity as a Helper for " + name);
+//            myLibId = new LibIdentity(name, uri, uri);
+//            LibState.getInstance().myHelperAndSharerId = myLibId;
+//        } else {
+//            logger.debug("HelperImpl: Reusing Sharer's LibIdentity as a Helper for " + name);
+//            myLibId = LibState.getInstance().myHelperAndSharerId;
+//        }
+
+        myLibId = new LibIdentity(name, contact, address);
         parameterRange = Parameterrange.ParameterRange.newBuilder().build();
-        LibState.getInstance().messageHashToIdentityMap.put(
-                ByteString.copyFrom(myLibId.getMyId().getPublicEncryptionKeyDigest()), myLibId.getMyId());
-        logger.debug("Added myself (Helper) " + name + " to messageHashToIdentityMap");
-        LibState.getInstance().printMessageHashToIdentityMap();
+        // Register in the messageHashAndSecretIdToIdentityMap table for self id.
+        // Since we are a helper, we don't have a secret id, hence register with a null secret id
+        logger.debug("Adding myself (Helper) " + name + " to messageHashAndSecretIdToIdentityMap");
+        LibState.getInstance().registerMessageHashAndSecretIdToIdentity(ByteString.copyFrom(myLibId.getMyId().getPublicEncryptionKeyDigest()),
+                null, myLibId.getMyId());
+        logger.debug("Adding myself (Helper) " + name + " to publicKeyToIdentityMap");
+        LibState.getInstance().registerPublicKeyId(myLibId.getPublicEncryptionKeyId(), myLibId);
 
         LibState.getInstance().setMeHelper(this);
-        LibState.getInstance().init(uri);
+        LibState.getInstance().init(contact, address);
     }
 
 
@@ -468,11 +473,11 @@ public class HelperImpl implements DeRecHelper {
         });
     }
 
-    public void registerIdentityReconciliation(String publicEncryptionKey, SharerStatusImpl sharerStatus) {
-        publicKeyToLostSharerMap.put(publicEncryptionKey, sharerStatus);
+    public void registerIdentityReconciliation(String publicEncryptionKey, List<SharerStatusImpl> sharerStatuses) {
+        publicKeyToLostSharerMap.put(publicEncryptionKey, sharerStatuses);
     }
 
-    public SharerStatusImpl getLostSharer(String publicEncryptionKey) {
+    public List<SharerStatusImpl> getLostSharers(String publicEncryptionKey) {
         return publicKeyToLostSharerMap.get(publicEncryptionKey);
     }
 
