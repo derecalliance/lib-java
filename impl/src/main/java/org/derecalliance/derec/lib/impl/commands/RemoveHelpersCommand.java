@@ -1,16 +1,14 @@
 package org.derecalliance.derec.lib.impl.commands;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.derecalliance.derec.lib.api.DeRecHelperStatus;
 import org.derecalliance.derec.lib.api.DeRecIdentity;
 import org.derecalliance.derec.lib.impl.Command;
 import org.derecalliance.derec.lib.impl.SecretImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 public class RemoveHelpersCommand<T extends DeRecHelperStatus> implements Command {
     private final List<? extends DeRecIdentity> helperIds;
@@ -23,7 +21,7 @@ public class RemoveHelpersCommand<T extends DeRecHelperStatus> implements Comman
         this.secret = secret;
         this.helperIds = helperIds;
         this.futures = new HashMap<>();
-        for (DeRecIdentity helperId: helperIds) {
+        for (DeRecIdentity helperId : helperIds) {
             this.futures.put(helperId, new CompletableFuture<>());
         }
     }
@@ -34,7 +32,8 @@ public class RemoveHelpersCommand<T extends DeRecHelperStatus> implements Comman
 
         for (T helperStatus : helperStatuses) {
             try {
-                logger.debug("Remove Helper: Completing future for helper: " + helperStatus.getId().getName());
+                logger.debug("Remove Helper: Completing future for helper: "
+                        + helperStatus.getId().getName());
                 futures.get(helperStatus.getId()).complete(helperStatus);
             } catch (Exception ex) {
                 logger.error("Exception in RemoveHelpersCommand: ", ex);

@@ -1,12 +1,11 @@
 package org.derecalliance.derec.lib.impl;
 
+import java.net.URI;
+import java.util.Arrays;
 import org.derecalliance.derec.lib.api.DeRecContact;
 import org.derecalliance.derec.protobuf.Contact;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.URI;
-import java.util.Arrays;
 
 public class ContactImpl implements DeRecContact {
 
@@ -16,20 +15,20 @@ public class ContactImpl implements DeRecContact {
     private long nonce;
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
-
     public ContactImpl(int publicEncryptionKeyId, String publicEncryptionKey, long nonce, String transportUri) {
         this.publicEncryptionKeyId = publicEncryptionKeyId;
         this.transportUri = transportUri;
         this.publicEncryptionKey = publicEncryptionKey;
         this.nonce = nonce;
     }
-    public ContactImpl() {
-    }
+
+    public ContactImpl() {}
 
     @Override
     public int getPublicEncryptionKeyId() {
         return publicEncryptionKeyId;
     }
+
     @Override
     public String getTransportUri() {
         return transportUri;
@@ -46,14 +45,14 @@ public class ContactImpl implements DeRecContact {
     }
 
     @Override
-    public byte[] createContactMessage(int publicEncryptionKeyId, String publicEncryptionKey, long nonce, String transportUri) {
-        Contact.ContactMessage contactMessage =
-                Contact.ContactMessage.newBuilder()
-                        .setPublicKeyId(publicEncryptionKeyId)
-                        .setPublicEncryptionKey(publicEncryptionKey)
-                        .setNonce(nonce)
-                        .setTransportUri(transportUri)
-                        .build();
+    public byte[] createContactMessage(
+            int publicEncryptionKeyId, String publicEncryptionKey, long nonce, String transportUri) {
+        Contact.ContactMessage contactMessage = Contact.ContactMessage.newBuilder()
+                .setPublicKeyId(publicEncryptionKeyId)
+                .setPublicEncryptionKey(publicEncryptionKey)
+                .setNonce(nonce)
+                .setTransportUri(transportUri)
+                .build();
         logger.debug("Created bytes for QR code: " + Arrays.toString(contactMessage.toByteArray()));
         return contactMessage.toByteArray();
     }
@@ -62,18 +61,21 @@ public class ContactImpl implements DeRecContact {
     public DeRecContact parseContactMessage(byte[] data) {
         logger.debug("Trying to parse bytes for QR code: " + Arrays.toString(data));
         try {
-            Contact.ContactMessage contactMessage =
-                    Contact.ContactMessage.parseFrom(data);
-            var contact = new ContactImpl(contactMessage.getPublicKeyId(), contactMessage.getPublicEncryptionKey(),
-                            contactMessage.getNonce(), new URI(contactMessage.getTransportUri()).toString());
+            Contact.ContactMessage contactMessage = Contact.ContactMessage.parseFrom(data);
+            var contact = new ContactImpl(
+                    contactMessage.getPublicKeyId(),
+                    contactMessage.getPublicEncryptionKey(),
+                    contactMessage.getNonce(),
+                    new URI(contactMessage.getTransportUri()).toString());
             return contact;
         } catch (Exception ex) {
-            System.err.println("Invalid protobuf message received in " +
-                    "parseContactMessage");
+            System.err.println("Invalid protobuf message received in " + "parseContactMessage");
             return null;
-        }    }
+        }
+    }
 
     public String debugStr() {
-        return "Contact key: [id: " + publicEncryptionKeyId + ", Key: " + publicEncryptionKey + ", URI: " + transportUri + ", Nonce: " + nonce + "]\n";
+        return "Contact key: [id: " + publicEncryptionKeyId + ", Key: " + publicEncryptionKey + ", URI: " + transportUri
+                + ", Nonce: " + nonce + "]\n";
     }
 }

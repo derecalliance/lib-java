@@ -1,16 +1,14 @@
 package org.derecalliance.derec.lib.impl;
 
-//import org.derecalliance.derec.api.*;
-import org.derecalliance.derec.lib.api.DeRecSecret;
-import org.derecalliance.derec.lib.impl.commands.MessageReceivedCommand;
-import org.derecalliance.derec.lib.impl.commands.PeriodicWorkCommand;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+// import org.derecalliance.derec.api.*;
 import java.time.Instant;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.derecalliance.derec.lib.api.DeRecSecret;
+import org.derecalliance.derec.lib.impl.commands.PeriodicWorkCommand;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PeriodicTaskRunner {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -36,8 +34,7 @@ public class PeriodicTaskRunner {
             return;
         }
         try {
-            for (DeRecSecret derecsecret :
-                    LibState.getInstance().getMeSharer().getSecrets()) {
+            for (DeRecSecret derecsecret : LibState.getInstance().getMeSharer().getSecrets()) {
                 staticLogger.info("About to call periodicWorkForSecret");
                 ((SecretImpl) derecsecret).periodicWorkForSecret();
             }

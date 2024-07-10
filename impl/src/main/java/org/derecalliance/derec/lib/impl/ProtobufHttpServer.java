@@ -3,24 +3,19 @@ package org.derecalliance.derec.lib.impl;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import org.derecalliance.derec.lib.impl.commands.AddHelpersCommand;
-import org.derecalliance.derec.lib.impl.commands.MessageReceivedCommand;
-import org.derecalliance.derec.protobuf.Derecmessage;
-import org.derecalliance.derec.protobuf.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import org.derecalliance.derec.lib.impl.commands.MessageReceivedCommand;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ProtobufHttpServer {
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     public ProtobufHttpServer(URI uri) throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress(uri.getPort()),
-                10);
+        HttpServer server = HttpServer.create(new InetSocketAddress(uri.getPort()), 10);
         server.createContext("/", new MyHandler());
         server.setExecutor(null);
 

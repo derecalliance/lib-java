@@ -1,18 +1,14 @@
 package org.derecalliance.derec.lib.impl.commands;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.derecalliance.derec.lib.api.DeRecHelperStatus;
 import org.derecalliance.derec.lib.api.DeRecIdentity;
 import org.derecalliance.derec.lib.impl.Command;
 import org.derecalliance.derec.lib.impl.SecretImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class AddHelpersCommand<T extends DeRecHelperStatus> implements Command {
     private final List<? extends DeRecIdentity> helperIds;
@@ -30,7 +26,7 @@ public class AddHelpersCommand<T extends DeRecHelperStatus> implements Command {
         this.helperIds = helperIds;
         this.isSync = isSync;
         this.futures = new HashMap<>();
-        for (DeRecIdentity helperId: helperIds) {
+        for (DeRecIdentity helperId : helperIds) {
             this.futures.put(helperId.getPublicEncryptionKey(), new CompletableFuture<>());
         }
     }
@@ -40,14 +36,14 @@ public class AddHelpersCommand<T extends DeRecHelperStatus> implements Command {
         helperStatuses = (List<T>) secret.processAddHelpersAsync(helperIds, true);
         logger.debug("In AddHelpersCommand: execute, got return value as: " + helperStatuses);
 
-//        if (isSync) {
-//            ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-//            logger.debug("Starting 10 seconds wait before completing");
-//            scheduler.schedule(() -> futureCompletion(), 10, TimeUnit.SECONDS);
-//            scheduler.shutdown();
-//        } else {
-//            futureCompletion();
-//        }
+        //        if (isSync) {
+        //            ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        //            logger.debug("Starting 10 seconds wait before completing");
+        //            scheduler.schedule(() -> futureCompletion(), 10, TimeUnit.SECONDS);
+        //            scheduler.shutdown();
+        //        } else {
+        //            futureCompletion();
+        //        }
         futureCompletion();
     }
 

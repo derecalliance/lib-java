@@ -1,5 +1,12 @@
 package org.derecalliance.derec.lib.impl;
 
+import static org.derecalliance.derec.lib.impl.VerifyShareMessages.calculateVerificationHash;
+
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
 import org.derecalliance.derec.lib.api.*;
 import org.derecalliance.derec.lib.api.DeRecHelperStatus;
 import org.derecalliance.derec.lib.api.DeRecSecret;
@@ -7,14 +14,6 @@ import org.derecalliance.derec.lib.api.DeRecVersion;
 import org.derecalliance.derec.protobuf.Storeshare;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static org.derecalliance.derec.lib.impl.VerifyShareMessages.calculateVerificationHash;
 
 public class VersionImpl implements DeRecVersion {
     SecretImpl secret;
@@ -69,8 +68,8 @@ public class VersionImpl implements DeRecVersion {
         long protectedCount = sharesMap.values().stream()
                 .filter(obj -> obj.isConfirmed() == true)
                 .count();
-        if (protectedCount >= (sharesMap.size() * LibState.getInstance().getMinPercentOfSharesForConfirmation()) &&
-                sharesMap.size() >= LibState.getInstance().getMinNumberOfHelpersForSendingShares()) {
+        if (protectedCount >= (sharesMap.size() * LibState.getInstance().getMinPercentOfSharesForConfirmation())
+                && sharesMap.size() >= LibState.getInstance().getMinNumberOfHelpersForSendingShares()) {
             isProtectedStatus = true;
         } else {
             isProtectedStatus = false;
@@ -78,8 +77,8 @@ public class VersionImpl implements DeRecVersion {
     }
 
     public String debugStr() {
-        String str = "VersionImpl: " + versionNumber + ", Value: " +
-                new String(protectedValue, StandardCharsets.UTF_8) + "\n";
+        String str = "VersionImpl: " + versionNumber + ", Value: " + new String(protectedValue, StandardCharsets.UTF_8)
+                + "\n";
         return str;
     }
 
@@ -90,12 +89,12 @@ public class VersionImpl implements DeRecVersion {
     public void createShares() {
         try {
 
-
             // Find the list of healthy helpers (Paired helpers)
             List<DeRecHelperStatus> filteredList = (List<DeRecHelperStatus>) secret.getHelperStatuses().stream()
                     .filter(helperStatus -> helperStatus.getStatus() == DeRecPairingStatus.PairingStatus.PAIRED)
                     .collect(Collectors.toList());
-            logger.debug("FilteredList size: " + filteredList.size() + ", numHelpers; " + secret.getHelperStatuses().size());
+            logger.debug("FilteredList size: " + filteredList.size() + ", numHelpers; "
+                    + secret.getHelperStatuses().size());
             for (DeRecHelperStatus hs : filteredList) {
                 logger.debug(hs.toString());
             }
@@ -110,21 +109,30 @@ public class VersionImpl implements DeRecVersion {
                 byte[] valueToProtect = secretMsg.toByteArray();
 
                 logger.debug("Creating shares for version " + versionNumber);
-                List<byte[]> committedDeRecSharesList = LibState.getInstance().getDerecCryptoImpl().share(secret.getSecretId().getBytes(), versionNumber, valueToProtect, numPairedHelpers,
-                        (int) Math.max((double) numPairedHelpers / 2, LibState.getInstance().getMinNumberOfHelpersForRecovery()));
-                logger.debug("created " + committedDeRecSharesList.size() + " shares for version " + versionNumber + ", numPairedHelpers is " + numPairedHelpers);
+                List<byte[]> committedDeRecSharesList = LibState.getInstance()
+                        .getDerecCryptoImpl()
+                        .share(secret.getSecretId().getBytes(), versionNumber, valueToProtect, numPairedHelpers, (int)
+                                Math.max(
+                                        (double) numPairedHelpers / 2,
+                                        LibState.getInstance().getMinNumberOfHelpersForRecovery()));
+                logger.debug("created " + committedDeRecSharesList.size() + " shares for version " + versionNumber
+                        + ", numPairedHelpers is " + numPairedHelpers);
 
                 for (int i = 0; i < numPairedHelpers; i++) {
-                    Storeshare.CommittedDeRecShare cds = Storeshare.CommittedDeRecShare.parseFrom(committedDeRecSharesList.get(i));
+                    Storeshare.CommittedDeRecShare cds =
+                            Storeshare.CommittedDeRecShare.parseFrom(committedDeRecSharesList.get(i));
                     Storeshare.DeRecShare drs = Storeshare.DeRecShare.parseFrom(cds.getDeRecShare());
-                    logger.debug("x value ->" + Base64.getEncoder().encodeToString(drs.getX().toByteArray()));
-                    logger.debug("secret id ->" + Base64.getEncoder().encodeToString(drs.getSecretId().toByteArray()) + ", version number -> " + drs.getVersion());
+                    logger.debug("x value ->"
+                            + Base64.getEncoder().encodeToString(drs.getX().toByteArray()));
+                    logger.debug("secret id ->"
+                            + Base64.getEncoder()
+                                    .encodeToString(drs.getSecretId().toByteArray()) + ", version number -> "
+                            + drs.getVersion());
                     ShareImpl share = new ShareImpl(this.secret.getSecretId(), versionNumber, myStatus, cds);
                     sharesMap.put(pairedHelpers.get(i), share);
                     if (!unsuccessfulVerificationRequests.containsKey(pairedHelpers.get(i))) {
                         unsuccessfulVerificationRequests.put(pairedHelpers.get(i), 0);
                     }
-
                 }
             }
             logger.debug("Created shares. Sharesmap size: " + sharesMap.size());
@@ -146,7 +154,8 @@ public class VersionImpl implements DeRecVersion {
         for (HashMap.Entry<DeRecHelperStatus, ShareImpl> entry : sharesMap.entrySet()) {
             ShareImpl share = entry.getValue();
             if (!share.isConfirmed()) {
-                logger.debug("************************************************ ************ *Sending share to " + entry.getKey().getId().getName());
+                logger.debug("************************************************ ************ *Sending share to "
+                        + entry.getKey().getId().getName());
 
                 StoreShareMessages.sendStoreShareRequestMessage(
                         secret.getLibId().getMyId(),
@@ -159,7 +168,6 @@ public class VersionImpl implements DeRecVersion {
             }
         }
     }
-
 
     /**
      * Sends VerifyShareMessage to all paired Helpers. Updates the pairing status of a Helper based on their
@@ -178,14 +186,18 @@ public class VersionImpl implements DeRecVersion {
                     entry.getKey().getId(),
                     secret.getSecretId(),
                     secret.getLibId().getPublicEncryptionKeyId(),
-                    versionNumber, nonce);
-            logger.debug("Sent VerifyShareRequestMessage to " + entry.getKey().getId().getName());
+                    versionNumber,
+                    nonce);
+            logger.debug("Sent VerifyShareRequestMessage to "
+                    + entry.getKey().getId().getName());
             // Every time we send a verification request, increment the unsuccessful verification count by 1.
-            unsuccessfulVerificationRequests.put(entry.getKey(),
-                    unsuccessfulVerificationRequests.get(entry.getKey()) + 1);
-            logger.info("Incremented unsuccessfulVerificationRequests by 1 for " + entry.getKey().getId().getName());
+            unsuccessfulVerificationRequests.put(
+                    entry.getKey(), unsuccessfulVerificationRequests.get(entry.getKey()) + 1);
+            logger.info("Incremented unsuccessfulVerificationRequests by 1 for "
+                    + entry.getKey().getId().getName());
 
-            if (unsuccessfulVerificationRequests.get(entry.getKey()) > LibState.getInstance().thresholdToMarkHelperFailed) {
+            if (unsuccessfulVerificationRequests.get(entry.getKey())
+                    > LibState.getInstance().thresholdToMarkHelperFailed) {
                 // If the number of unanswered/failed verification requests is greater than
                 // thresholdToMarkHelperFailed, set the helper status to FAILED, and recalculate shares.
                 if (entry.getKey().getStatus() == DeRecPairingStatus.PairingStatus.REFUSED) {
@@ -194,8 +206,10 @@ public class VersionImpl implements DeRecVersion {
                 }
                 createShares();
                 logger.debug("HELPER FAILED VERIFICATION");
-            } else if (unsuccessfulVerificationRequests.get(entry.getKey()) > LibState.getInstance().thresholdToMarkHelperRefused) {
-                // If the number of unanswered/failed verification requests is greater than thresholdToMarkHelperRefused, set that helper's pairing
+            } else if (unsuccessfulVerificationRequests.get(entry.getKey())
+                    > LibState.getInstance().thresholdToMarkHelperRefused) {
+                // If the number of unanswered/failed verification requests is greater than
+                // thresholdToMarkHelperRefused, set that helper's pairing
                 // status to REFUSED. We hope that the helper can come back.
                 if (entry.getKey().getStatus() == DeRecPairingStatus.PairingStatus.PAIRED) {
                     ((HelperStatusImpl) entry.getKey()).setStatus(DeRecPairingStatus.PairingStatus.REFUSED);
@@ -238,10 +252,11 @@ public class VersionImpl implements DeRecVersion {
      * @param messageVersionNumber Version of the secret being verified
      * @return true if the response is as expected, false for all other cases
      */
-    public boolean handleVerificationResponse(DeRecIdentity helperId, byte[] messageNonce, byte[] messageHash,
-                                              int messageVersionNumber) {
-        Optional<? extends DeRecHelperStatus> helperStatusOptional =
-                secret.getHelperStatuses().stream().filter(hs -> hs.getId().equalsKey(helperId)).findFirst();
+    public boolean handleVerificationResponse(
+            DeRecIdentity helperId, byte[] messageNonce, byte[] messageHash, int messageVersionNumber) {
+        Optional<? extends DeRecHelperStatus> helperStatusOptional = secret.getHelperStatuses().stream()
+                .filter(hs -> hs.getId().equalsKey(helperId))
+                .findFirst();
         if (!helperStatusOptional.isPresent()) {
             logger.debug("Could not find helper status for sender: " + helperId.getName());
             return false;
@@ -254,9 +269,12 @@ public class VersionImpl implements DeRecVersion {
             // that we later removed or declared inactive before they could respond.
             return false;
         }
-        byte[] expectedHash = calculateVerificationHash(share.getCommittedDeRecShare().toByteArray(), messageNonce);
-        logger.debug("Expected hash: V(" + versionNumber + ") " + Base64.getEncoder().encodeToString(expectedHash));
-        logger.debug("Received hash: V(" + messageVersionNumber + ") " + Base64.getEncoder().encodeToString(messageHash));
+        byte[] expectedHash =
+                calculateVerificationHash(share.getCommittedDeRecShare().toByteArray(), messageNonce);
+        logger.debug(
+                "Expected hash: V(" + versionNumber + ") " + Base64.getEncoder().encodeToString(expectedHash));
+        logger.debug("Received hash: V(" + messageVersionNumber + ") "
+                + Base64.getEncoder().encodeToString(messageHash));
         if (Arrays.equals(expectedHash, messageHash)) {
             // Re-verify that this share is still confirmed
             updateConfirmationShareStorage(helperStatus, true);

@@ -1,14 +1,13 @@
 package org.derecalliance.derec.lib.impl;
 
-import org.derecalliance.derec.lib.api.DeRecIdentity;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.derecalliance.derec.lib.impl.utils.MiscUtils.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
-import static org.derecalliance.derec.lib.impl.utils.MiscUtils.*;
+import org.derecalliance.derec.lib.api.DeRecIdentity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IdentityImpl extends DeRecIdentity {
 
@@ -22,8 +21,13 @@ public class IdentityImpl extends DeRecIdentity {
      * @param publicEncryptionKey PEM encoded public encryption key
      * @param publicSignatureKey PEM encoded public signature key
      */
-    public IdentityImpl(String name, String contact, String address, int publicEncryptionKeyId, String publicEncryptionKey,
-                        String publicSignatureKey) {
+    public IdentityImpl(
+            String name,
+            String contact,
+            String address,
+            int publicEncryptionKeyId,
+            String publicEncryptionKey,
+            String publicSignatureKey) {
         super(name, contact, address, publicEncryptionKeyId, publicEncryptionKey, publicSignatureKey);
     }
 
@@ -44,6 +48,7 @@ public class IdentityImpl extends DeRecIdentity {
             return new byte[0];
         }
     }
+
     public static DeRecIdentity deserializeDeRecIdentity(byte[] data) throws IOException, ClassNotFoundException {
         Logger staticLogger = LoggerFactory.getLogger(IdentityImpl.class.getName());
 
@@ -55,7 +60,8 @@ public class IdentityImpl extends DeRecIdentity {
             int publicEncryptionKeyId = readIntFromByteArrayInputStream(bais);
             String publicEncryptionKey = new String(readByteArrayFromByteArrayInputStream(bais));
             String publicSignatureKey = new String(readByteArrayFromByteArrayInputStream(bais));
-            return new DeRecIdentity(name, contact, address, publicEncryptionKeyId, publicEncryptionKey, publicSignatureKey);
+            return new DeRecIdentity(
+                    name, contact, address, publicEncryptionKeyId, publicEncryptionKey, publicSignatureKey);
         } catch (Exception ex) {
             staticLogger.error("Exception in deserializeDeRecIdentity", ex);
             return null;
