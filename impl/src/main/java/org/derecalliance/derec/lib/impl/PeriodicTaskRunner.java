@@ -2,9 +2,12 @@ package org.derecalliance.derec.lib.impl;
 
 //import org.derecalliance.derec.api.*;
 import org.derecalliance.derec.lib.api.DeRecSecret;
+import org.derecalliance.derec.lib.impl.commands.MessageReceivedCommand;
+import org.derecalliance.derec.lib.impl.commands.PeriodicWorkCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -16,47 +19,31 @@ public class PeriodicTaskRunner {
     public void startProcessing() {
         final Runnable task = new Runnable() {
             public void run() {
-                logger.info("In run()");
-
-//                Derecmessage.DeRecMessage deRecMessage;
-//                while ((deRecMessage = LibState.getInstance().getIncomingMessageQueue().getNextRequest()) != null) {
-//                    // Process the request
-//                    logger.debug("Processing dequeued message");
-//                    // Check if messageBodies is present and is of type SharerMessageBodies
-//                    if (deRecMessage.hasMessageBodies() && deRecMessage.getMessageBodies().hasSharerMessageBodies()) {
-//                        logger.debug("sharer bodies");
-//                        // Iterate over each SharerMessageBody in SharerMessageBodies
-//                        for (Derecmessage.DeRecMessage.SharerMessageBody sharerMessageBody : deRecMessage.getMessageBodies().getSharerMessageBodies().getSharerMessageBodyList()) {
-//                            logger.debug("one sharer body");
-//                            // Check if the SharerMessageBody contains a PairRequestMessage
-//                            if (sharerMessageBody.hasPairRequestMessage()) {
-//                                Pair.PairRequestMessage pairRequestMessage = sharerMessageBody.getPairRequestMessage();
-//                                logger.debug("Received Pair request " +
-//                                        "message");
-//                            } else {
-//                                logger.debug("non pair request msg");
-//                            }
-//                        }
-//                    }
-//                }
-
-                if (LibState.getInstance().getMeSharer() == null) {
-                    return;
-                }
-                try {
-                    for (DeRecSecret derecsecret:
-                         LibState.getInstance().getMeSharer().getSecrets()) {
-                        logger.info("About to call periodicWorkForSecret");
-                         ((SecretImpl)derecsecret).periodicWorkForSecret();
-                    }
-                } catch (Exception ex) {
-                    logger.error("Exception in periodic task runner", ex);
-                }
+                // Enqueue this message to the command queue
+                PeriodicWorkCommand command = new PeriodicWorkCommand(Instant.now());
+                LibState.getInstance().getCommandQueue().add(command);
             }
         };
 
         // Schedule the task to run every 1 second after an initial delay of 0 seconds
         scheduler.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS);
+    }
+
+    public static void processPeriodicWork(Instant instant) {
+        Logger staticLogger = LoggerFactory.getLogger(PeriodicTaskRunner.class.getName());
+
+        if (LibState.getInstance().getMeSharer() == null) {
+            return;
+        }
+        try {
+            for (DeRecSecret derecsecret :
+                    LibState.getInstance().getMeSharer().getSecrets()) {
+                staticLogger.info("About to call periodicWorkForSecret");
+                ((SecretImpl) derecsecret).periodicWorkForSecret();
+            }
+        } catch (Exception ex) {
+            staticLogger.error("Exception in periodic task runner", ex);
+        }
     }
 
     public void stopProcessing() {

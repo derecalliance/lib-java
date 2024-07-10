@@ -5,6 +5,7 @@ package org.derecalliance.derec.lib.impl;
 import org.derecalliance.derec.lib.api.*;
 
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
@@ -22,6 +23,8 @@ import org.derecalliance.derec.lib.api.DeRecStatusNotification;
 //import org.derecalliance.derec.lib.LibIdentity;
 //import org.derecalliance.derec.lib.LibState;
 //import org.derecalliance.derec.lib.Version;
+import org.derecalliance.derec.lib.impl.commands.NewSecretCommand;
+import org.derecalliance.derec.lib.impl.commands.PeriodicWorkCommand;
 import org.derecalliance.derec.protobuf.Parameterrange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,14 +104,15 @@ public class SharerImpl implements DeRecSharer {
         }
 
         @Override
-        public DeRecSecret newSecret(String description,
-                                     byte[] bytesToProtect, boolean recovery) {
-            var secret = new SecretImpl( description,bytesToProtect,recovery);
-            synchronized (secretsMap) {
-                secretsMap.put(secret.getSecretId(), secret);
+        public DeRecSecret newSecret(String description, byte[] bytesToProtect, boolean recovery) {
+            NewSecretCommand command = new NewSecretCommand(this, description, bytesToProtect, recovery);
+            LibState.getInstance().getCommandQueue().add(command);
+            try {
+                return command.getFuture().get();
+            } catch(Exception ex) {
+                logger.error("Exception in newSecret.", ex);
+                return null;
             }
-            printSecretsMap();
-            return secret;
         }
 
         @Override
@@ -116,6 +120,15 @@ public class SharerImpl implements DeRecSharer {
             logger.debug("Not implemented\n");
             Thread.currentThread().getStackTrace();
             return null;
+        }
+
+        public SecretImpl processNewSecret(String description, byte[] bytesToProtect, boolean recovery) {
+            var secret = new SecretImpl(description, bytesToProtect, recovery);
+            synchronized (secretsMap) {
+                secretsMap.put(secret.getSecretId(), secret);
+            }
+            printSecretsMap();
+            return secret;
         }
 
         @Override

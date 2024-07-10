@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 
 import com.google.protobuf.ByteString;
@@ -18,6 +19,9 @@ import com.google.protobuf.Timestamp;
 //import org.derecalliance.derec.lib.LibState;
 //import org.derecalliance.derec.lib.Version;
 //import org.derecalliance.derec.lib.utils.UuidUtils;
+import org.derecalliance.derec.lib.impl.commands.AddHelpersCommand;
+import org.derecalliance.derec.lib.impl.commands.RemoveHelpersCommand;
+import org.derecalliance.derec.lib.impl.commands.UpdateCommand;
 import org.derecalliance.derec.protobuf.Derecmessage;
 import org.derecalliance.derec.protobuf.Storeshare;
 import org.slf4j.Logger;
@@ -41,6 +45,7 @@ public class SecretImpl implements DeRecSecret {
         ArrayList<HelperStatusImpl> helperStatuses;
 
         boolean isRecovering;
+        boolean isClosed; // is this secret shutdown/closed?
         TreeMap<Integer, VersionImpl> versionsMap;  // Semantically, this is the keepList from the sharer's side
 
         // When a new version (n) is created, it gets confirmed after the helpers receive the shares.
@@ -101,6 +106,7 @@ public class SecretImpl implements DeRecSecret {
                     updateAsync(bytesToProtect);
                 }
                 isRecovering = recovery;
+                isClosed = false;
             } catch (Exception ex) {
                 logger.error("Exception in secret constructor", ex);
             }
@@ -109,17 +115,29 @@ public class SecretImpl implements DeRecSecret {
             this(description, bytesToProtect, new ArrayList<>(), recovery);
         }
 
-        @Override
+
+    @Override
         public void addHelpers(List<? extends DeRecIdentity> helperIds) {
-            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
-        }
+//            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+//            Thread.currentThread().getStackTrace();
+        AddHelpersCommand command = new AddHelpersCommand(this, helperIds, true);
+        LibState.getInstance().getCommandQueue().add(command);
+        // Wait until all futures are complete
+        List<CompletableFuture<? extends DeRecHelperStatus>> futures = command.getFutures();
+        CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        logger.debug("addHelpers - sync call blocking for allOf.join");
+        allOf.join();
+        logger.debug("addHelpers - sync call got unblocked from allOf.join");
+    }
 
         @Override
         public List<CompletableFuture<? extends DeRecHelperStatus>> addHelpersAsync(List<? extends DeRecIdentity> helperIds) {
-            return processAddHelpersAsync(helperIds, true);
+            AddHelpersCommand command = new AddHelpersCommand(this, helperIds, false);
+            LibState.getInstance().getCommandQueue().add(command);
+            return command.getFutures();
         }
-        public List<CompletableFuture<? extends DeRecHelperStatus>> processAddHelpersAsync(List<? extends DeRecIdentity> helperIds, boolean shouldStartPairing) {
+        public List<DeRecHelperStatus> processAddHelpersAsync(List<? extends DeRecIdentity> helperIds, boolean shouldStartPairing) {
+            ArrayList<DeRecHelperStatus> ret = new ArrayList<>();
             helperIds.forEach(helperId -> {
                 long fakeNonce = 1111L; // This API should include nonce per
 //                LibState.getInstance().messageHashToIdentityMap.put(ByteString.copyFrom(helperId.getPublicEncryptionKeyDigest()),
@@ -135,6 +153,7 @@ public class SecretImpl implements DeRecSecret {
                 // helper id that is scanned from the QR code
                 var helperStatus = new HelperStatusImpl(this, helperId, fakeNonce);
                 this.helperStatuses.add(helperStatus);
+                ret.add(helperStatus);
                 if (shouldStartPairing == true) {
                     helperStatus.startPairing(this.id, helperStatus.getId(), fakeNonce);
                 }
@@ -143,7 +162,7 @@ public class SecretImpl implements DeRecSecret {
                 }
 
             });
-            return null;
+            return ret;
         }
 
     public void addRecoveredHelper(HelperStatusImpl helperStatus) {
@@ -160,13 +179,25 @@ public class SecretImpl implements DeRecSecret {
 
         @Override
         public void removeHelpers(List<? extends DeRecIdentity> helperIds) {
-            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
+//            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
+//            Thread.currentThread().getStackTrace();
+            LibState.getInstance().getCommandQueue().add(new RemoveHelpersCommand(this, helperIds));
+
         }
 
         @Override
         public List<CompletableFuture<? extends DeRecHelperStatus>> removeHelpersAsync(List<? extends DeRecIdentity> helperIds) {
-            logger.debug("In removeHelpersAsync");
+            RemoveHelpersCommand command = new RemoveHelpersCommand(this, helperIds);
+            LibState.getInstance().getCommandQueue().add(command);
+            // Return futures or handle as needed
+//            return List.of(command.getFuture());
+            return(command.getFuture());
+
+        }
+
+    public List<HelperStatusImpl> processRemoveHelpersAsync(List<?
+            extends DeRecIdentity> helperIds) {
+            logger.debug("In processRemoveHelpersAsync");
             for (DeRecIdentity helperId: helperIds) {
                 logger.debug("Removing helper: " + helperId.getName());
                 var toBeRemoved =
@@ -202,44 +233,50 @@ public class SecretImpl implements DeRecSecret {
                 }
             }
             return null;
-        }
+    }
+
+
 
         @Override
         public DeRecVersion update() {
             logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
+            logger.debug(Arrays.stream(Thread.currentThread().getStackTrace()).toList().toString());
             return null;
         }
 
         @Override
         public DeRecVersion update(byte[] bytesToProtect) {
             logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
+            logger.debug(Arrays.stream(Thread.currentThread().getStackTrace()).toList().toString());
             return null;
         }
 
         @Override
         public DeRecVersion update(byte[] bytesToProtect, String description) {
             logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
+            logger.debug(Arrays.stream(Thread.currentThread().getStackTrace()).toList().toString());
             return null;
         }
 
         @Override
         public Future<? extends DeRecVersion> updateAsync() {
             logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
+            logger.debug(Arrays.stream(Thread.currentThread().getStackTrace()).toList().toString());
             return null;
         }
 
         @Override
         public Future<? extends DeRecVersion> updateAsync(byte[] bytesToProtect) {
-//        Integer newVersionNumber = getMaxVersionNumber() + 1;
-//        VersionImpl v = new VersionImpl(this, bytesToProtect, newVersionNumber);
-//        versionsMap.put(newVersionNumber, v);
-//        return null;
 
-            int newVersionNumber = getMaxVersionNumber() + 1;
+            UpdateCommand command = new UpdateCommand(this, bytesToProtect);
+            LibState.getInstance().getCommandQueue().add(command);
+            // Wait for completion or handle as needed
+            return command.getFuture();
+        }
+
+        public DeRecVersion processUpdateAsync(byte[] bytesToProtect) {
+
+                int newVersionNumber = getMaxVersionNumber() + 1;
 
             LibState.getInstance().getMeSharer().deliverNotification(
                     DeRecStatusNotification.StandardNotificationType.UPDATE_PROGRESS,
@@ -247,13 +284,15 @@ public class SecretImpl implements DeRecSecret {
                     "Creating version # " + newVersionNumber,
                     this, null, null);
 
-            return updateAsync(newVersionNumber, bytesToProtect);
+            return processUpdateAsync(newVersionNumber, bytesToProtect);
         }
+
+
 
         @Override
         public Future<? extends DeRecVersion> updateAsync(byte[] bytesToProtect, String description) {
             logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
+            logger.debug(Arrays.stream(Thread.currentThread().getStackTrace()).toList().toString());
             return null;
         }
 
@@ -269,12 +308,24 @@ public class SecretImpl implements DeRecSecret {
 
 
         public Future<? extends DeRecVersion> updateAsync(int versionNumber, byte[] bytesToProtect) {
-            VersionImpl v = new VersionImpl(this, bytesToProtect, versionNumber);
-            versionsMap.put(versionNumber, v);
+            UpdateCommand command = new UpdateCommand(this, bytesToProtect);
+            LibState.getInstance().getCommandQueue().add(command);
+            // Return future or handle as needed
+            return command.getFuture();
 
-            updateKeepListIfNeeded();
-            return null;
+//            VersionImpl v = new VersionImpl(this, bytesToProtect, versionNumber);
+//            versionsMap.put(versionNumber, v);
+//
+//            updateKeepListIfNeeded();
+//            return null;
         }
+    public DeRecVersion processUpdateAsync(int versionNumber, byte[] bytesToProtect) {
+        VersionImpl v = new VersionImpl(this, bytesToProtect, versionNumber);
+        versionsMap.put(versionNumber, v);
+
+        updateKeepListIfNeeded();
+        return null;
+    }
 
         public void addVersion(int versionNumber, VersionImpl version) {
             versionsMap.put(versionNumber, version);
@@ -294,22 +345,21 @@ public class SecretImpl implements DeRecSecret {
 
         @Override
         public boolean isAvailable() {
-            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
-            return false;
+            // The comment for this API says: the secret is in a state where updates can be safely made and if it
+            // is not closed, then the secret is available.
+            // In this implementation, if the secret is not closed, it's always available.
+            return isClosed ? false : true;
         }
 
         @Override
         public boolean isClosed() {
-            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
-            return false;
+            return isClosed;
         }
 
         @Override
         public CompletableFuture<? extends DeRecSecret> closeAsync() {
             logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-            Thread.currentThread().getStackTrace();
+            logger.debug(Arrays.stream(Thread.currentThread().getStackTrace()).toList().toString());
             return null;
         }
 
@@ -327,10 +377,9 @@ public class SecretImpl implements DeRecSecret {
 
         @Override
         public void close() {
-//            logger.debug("Not implemented: " + Thread.currentThread().getStackTrace()[2].getMethodName() + "\n");
-//            Thread.currentThread().getStackTrace();
             // TODO: unpair with helpers and gracefully the secret
             LibState.getInstance().getMeSharer().removeSecret(this.getSecretId());
+            isClosed = true;
         }
         public String debugStr() {
             String str = "";

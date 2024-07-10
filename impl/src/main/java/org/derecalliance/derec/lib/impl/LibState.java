@@ -9,6 +9,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +33,7 @@ public class LibState {
     ProtobufHttpServer hServer = null;
     private static final LibState instance = new LibState();
 //    private HashMap<DeRecSecret.Id, Secret> secrets = new HashMap<>();
-    private IncomingMessageQueue incomingMessageQueue =
+    private final IncomingMessageQueue incomingMessageQueue =
             new IncomingMessageQueue();
 
 
@@ -38,7 +41,7 @@ public class LibState {
     private long myNonce;
 //    private boolean isRecovering = false;
 
-    LibIdentity myHelperAndSharerId = null;
+//    LibIdentity myHelperAndSharerId = null;
     SharerImpl meSharer;
     HelperImpl meHelper;
 
@@ -112,7 +115,13 @@ public class LibState {
 
     boolean httpServerStarted = false;
 
-//    public void cryptoMain() {
+    BlockingQueue<Command> commandQueue = new LinkedBlockingQueue<>();
+
+    BlockingQueue<Command> getCommandQueue() {
+        return commandQueue;
+    }
+
+    //    public void cryptoMain() {
 //        DerecCryptoImpl cryptoImpl = new DerecCryptoImpl();
 //
 //        byte[] id = "some_id".getBytes();
@@ -159,6 +168,10 @@ public class LibState {
             try {
                 startHttpServer(new URI(address));
                 httpServerStarted = true;
+                // Start the processor in a thread
+                Thread processorThread = new Thread(new CommandProcessor(commandQueue));
+                processorThread.start();
+
                 if (getMeSharer() != null) {
                     logger.debug("Init starting periodic task runner for the sharer");
                     PeriodicTaskRunner runner = new PeriodicTaskRunner();

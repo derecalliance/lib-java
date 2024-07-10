@@ -116,54 +116,13 @@ public class VerifyShareMessages {
             staticLogger.debug("In handleVerifyShareResponse from " + senderId.getName());
             var secret =  (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
             staticLogger.debug("In handleVerifyShareResponse - Secret is: " + secret);
-            if (secret != null) {
-                int versionNumber = message.getVersion();
-                VersionImpl version = secret.getVersionByNumber(versionNumber);
+            int versionNumber = message.getVersion();
+            VersionImpl version = secret.getVersionByNumber(versionNumber);
+            if (secret != null && version != null) {
                 byte[] nonce = message.getNonce().toByteArray();
                 byte[] hash = message.getHash().toByteArray();
 
                 version.handleVerificationResponse(senderId, nonce, hash, versionNumber);
-
-//                ArrayList<DeRecHelperStatus> hStatuses = (ArrayList<DeRecHelperStatus>) secret.getHelperStatuses();
-//                staticLogger.debug("In handleVerifyShareResponse - helper statuses");
-//                for (DeRecHelperStatus hs : hStatuses) {
-//                    staticLogger.debug("Helper: " + hs.getId().getName() + ", Key:" + hs.getId().getPublicKey());
-//                }
-//                staticLogger.debug("----");
-//                staticLogger.debug("looking for name: " + senderId.getName() + ", key: " + senderId.getPublicKey());
-
-
-//                Optional<? extends DeRecHelperStatus> helperStatusOptional =
-//                        secret.getHelperStatuses().stream().filter(hs -> hs.getId().equalsKey(senderId)).findFirst();
-//                if (!helperStatusOptional.isPresent()) {
-//                    staticLogger.debug("Could not find helper status for sender: " + senderId.getName());
-//                    return;
-//                }
-//
-//                DeRecHelperStatus helperStatus = (DeRecHelperStatus)helperStatusOptional.get();
-//
-//                if (helperStatus == null) {
-//                    staticLogger.debug("Could not find helper status for sender: " + senderId.getName());
-//                    return;
-//                } else {
-//                    ShareImpl share = version.getShare(helperStatus);
-//                    if (share == null) {
-//                        // The share can be null if we had previously sent a verification request to a helper
-//                        // that we later removed or declared inactive before they could respond.
-//                        return;
-//                    }
-//                    byte [] expectedHash = calculateVerificationHash(share.getCommittedDeRecShareBytes(), nonce);
-//                    staticLogger.debug("Expected hash: V(" + version.getVersionNumber() + ") " + Base64.getEncoder().encodeToString(expectedHash));
-//                    staticLogger.debug("Received hash: V(" + versionNumber + ") " + Base64.getEncoder().encodeToString(message.getHash().toByteArray()));
-//                    if (Arrays.equals(expectedHash, message.getHash().toByteArray())) {
-//                        // Re-verify that this share is still confirmed
-//                        version.updateConfirmationShareStorage(helperStatus, true);
-//                        staticLogger.debug("hashes matched");
-//                    } else {
-//                        version.updateConfirmationShareStorage(helperStatus, false);
-//                        staticLogger.debug("hashes not matched");
-//                    }
-//                }
             }
         } catch (Exception ex) {
             staticLogger.error("Exception in handleVerifyShareResponse", ex);
