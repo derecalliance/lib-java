@@ -204,7 +204,6 @@ public interface DeRecSecret extends Closeable {
 
     String getDescription();
     boolean isRecovering();
-    void setRecovering(boolean recovering);
 
 
     /**

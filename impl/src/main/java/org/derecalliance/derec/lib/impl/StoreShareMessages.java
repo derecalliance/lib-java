@@ -32,7 +32,7 @@ public class StoreShareMessages {
             ShareImpl share) {
         Derecmessage.DeRecMessage deRecMessage = createStoreShareRequestMessage(senderId, receiverId, secretId,
                 share);
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId, true);
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), true, secretId, receiverId, true);
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
@@ -56,7 +56,7 @@ public class StoreShareMessages {
                 result, versionNumber);
         staticLogger.debug("Generated response: ");
         MessageParser.printDeRecMessage(deRecMessage, "Sending messsage ");
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId, true);
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), false, secretId, receiverId, true);
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
@@ -83,25 +83,32 @@ public class StoreShareMessages {
                 staticLogger.debug("StoreShare request received for unknow Sharer.Secret: <" + senderId + "." + secretId + ">");
                 return;
             }
-            LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.UPDATE_INDICATION, senderId, secretId, message.getVersion());
+            staticLogger.debug("Share: isEmpty = " + message.getShare().isEmpty());
+            staticLogger.debug("Message version: " + message.getVersion());
+            Storeshare.CommittedDeRecShare cds = null;
             var sharerStatus = LibState.getInstance().getMeHelper().sharerStatuses.get(senderId).get(secretId);
 
-            Storeshare.CommittedDeRecShare cds = null;
-            try {
-                cds = Storeshare.CommittedDeRecShare.parseFrom(message.getShare().toByteArray());
-                staticLogger.debug("In handleStoreShareRequest: parsed Committed DeRecShare successfully");
-            } catch (InvalidProtocolBufferException ex) {
-                staticLogger.error("Exception in trying to parse the committed derec share");
-                ex.printStackTrace();
-                return;
+            if (!(message.getShare().isEmpty() || message.getVersion() == 0)) {
+                LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.UPDATE_INDICATION, senderId, secretId, message.getVersion());
+
+                try {
+                    cds = Storeshare.CommittedDeRecShare.parseFrom(message.getShare().toByteArray());
+                    staticLogger.debug("In handleStoreShareRequest: parsed Committed DeRecShare successfully");
+                } catch (InvalidProtocolBufferException ex) {
+                    staticLogger.error("Exception in trying to parse the committed derec share", ex);
+                    return;
+                }
+
+
+                // Create a ShareImpl to store this received committedDeRecShare locally
+                ShareImpl share = new ShareImpl(secretId, message.getVersion(), sharerStatus, cds);
+                LibState.getInstance().getMeHelper().addShare(sharerStatus, secretId, message.getVersion(), share);
+                staticLogger.debug("Will send sendStoreShareResponseMessage for secret " + share.getSecretId() + ", version " + share.getVersionNumber());
             }
 
-            // Create a ShareImpl to store this received committedDeRecShare locally
-            ShareImpl share = new ShareImpl(secretId, message.getVersion(), sharerStatus, cds);
-            LibState.getInstance().getMeHelper().addShare(sharerStatus, secretId, message.getVersion(), share);
-
             // Check the keepList specified in the message, and remove any shares that are not in the keepList
-            ArrayList<Integer> keepList = new ArrayList<>(message.getKeepListList());
+            ArrayList<Integer> keepList =  new ArrayList<>(message.getKeepListList());
+            staticLogger.debug("Received keeplist = " + keepList);
             LibState.getInstance().getMeHelper().deleteCommittedDerecSharesBasedOnUpdatedKeepList(senderId,
                     secretId, keepList);
 
@@ -116,14 +123,8 @@ public class StoreShareMessages {
                     secretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(), result,
                     message.getVersion());
 
-            if (share == null) {
-                staticLogger.debug("Sent sendStoreShareResponseMessage for unknown share");
-            } else {
-                staticLogger.debug("Sent sendStoreShareResponseMessage for secret " + share.getSecretId() + ", version " + share.getVersionNumber());
-            }
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleStoreShareRequest");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleStoreShareRequest", ex);
         }
     }
 
@@ -147,18 +148,23 @@ public class StoreShareMessages {
             // Update confirmation of share storage for the Helper
             if (secret != null) {
                 VersionImpl version = secret.getVersionByNumber(message.getVersion());
-                Optional<? extends DeRecHelperStatus> helperStatusOptional =
-                        secret.getHelperStatuses().stream().filter(hs -> hs.getId().equals(senderId)).findFirst();
-                var helperStatus = (DeRecHelperStatus) helperStatusOptional.get();
-                if (helperStatus == null) {
-                    staticLogger.debug("Could not find helper status for sender: " + senderId.getName());
-                    return;
+                // Version is null when the Sharer sends a StoreShareRequest with no share/version (just the keepList update)
+                // In this case, the versionNumber in the StoreShareResponse message is not present in the protobuf, and defaults to 0.
+                // Hence the secret.getVersionByNumber(message.getVersion()) will return null
+                if (version != null) {
+                    Optional<? extends DeRecHelperStatus> helperStatusOptional =
+                            secret.getHelperStatuses().stream().filter(hs -> hs.getId().equals(senderId)).findFirst();
+                    if (helperStatusOptional.isPresent()) {
+                        var helperStatus = (DeRecHelperStatus) helperStatusOptional.get();
+                        version.updateConfirmationShareStorage(helperStatus, true);
+                    } else {
+                        staticLogger.debug("Could not find helper status for sender: " + senderId.getName());
+                        return;
+                    }
                 }
-                version.updateConfirmationShareStorage(helperStatus, true);
             }
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleStoreShareResponse");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleStoreShareResponse", ex);
         }
     }
 }

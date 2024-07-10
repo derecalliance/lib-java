@@ -47,7 +47,7 @@ class PairMessages {
 
          return val;
      }
-     public static Optional<DeRecIdentity> createIdentityFromPairRequest(Pair.PairRequestMessage message) {
+     public static Optional<DeRecIdentity> createIdentityFromPairRequest(DeRecSecret.Id secretId, Pair.PairRequestMessage message) {
          Optional<String> name = extractFromCommunicationInfo("name", message);
          Optional<String> address = extractFromCommunicationInfo("address",
                  message);
@@ -55,10 +55,12 @@ class PairMessages {
                  message);
 
          var sharerIdentity =  Optional.of(new DeRecIdentity(name.get(),
-                 contact.get(), address.get(),
+                 contact.get(), address.get(), message.getPublicKeyId(),
                  message.getPublicEncryptionKey(), message.getPublicSignatureKey()));
-         sharerIdentity.ifPresent(id ->  LibState.getInstance().messageHashToIdentityMap.put(ByteString.copyFrom(id.getPublicEncryptionKeyDigest()),
-                 id));
+//         sharerIdentity.ifPresent(id ->  LibState.getInstance().messageHashToIdentityMap.put(ByteString.copyFrom(id.getPublicEncryptionKeyDigest()),
+//                 id));
+         sharerIdentity.ifPresent(id ->  LibState.getInstance().registerMessageHashAndSecretIdToIdentity(ByteString.copyFrom(id.getPublicEncryptionKeyDigest()),
+                 secretId, id));
          return sharerIdentity;
 
      }
@@ -118,11 +120,13 @@ class PairMessages {
              Communicationinfo.CommunicationInfo communicationInfo =
                      buildCommunicationInfo(LibState.getInstance().getMeHelper().getMyLibId());
 
-             Optional<DeRecIdentity> sharerId = createIdentityFromPairRequest(message);
+             Optional<DeRecIdentity> sharerId = createIdentityFromPairRequest(new DeRecSecret.Id(secretId), message);
              if (sharerId.isEmpty()) {
                  return;
              }
-             LibState.getInstance().registerPublicKeyId(publicKeyId, sharerId.get());
+             staticLogger.debug("Created DeRecIdentity: " + sharerId.get());
+
+//             LibState.getInstance().registerPublicKeyId(publicKeyId, sharerId.get());
              LibState.getInstance().printPublicKeyIdToIdentityMap();
              SharerStatusImpl sharerStatus = new SharerStatusImpl(sharerId.get());
              sharerStatus.setRecovering(message.getSenderKind() == Pair.SenderKind.SHARER_RECOVERY);
@@ -140,12 +144,8 @@ class PairMessages {
                     staticLogger.error("Error: got no reference object");
                     return; // TODO: Handle this better - maybe send a pairing response with an appropriate error code
                 }
-                LibState.getInstance().getMeHelper().registerIdentityReconciliation(sharerId.get().getPublicEncryptionKey(), (SharerStatusImpl) uiResponse.getReferenceObject());
+                LibState.getInstance().getMeHelper().registerIdentityReconciliation(sharerId.get().getPublicEncryptionKey(), (List<SharerStatusImpl>) uiResponse.getReferenceObject());
                 LibState.getInstance().getMeHelper().printPublicKeyToLostSharerMap();
-                 if (uiResponse.getResult()) {
-                     staticLogger.debug("Got uiResponse DeRecIdentity: " + uiResponse.getResult());
-                 }
-
              }
 
 
@@ -163,8 +163,7 @@ class PairMessages {
                      LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.PAIR_INDICATION,
                              sharerId.get(), new DeRecSecret.Id(secretId), -1);
          } catch (Exception ex) {
-             staticLogger.error("Exception in handlePairRequest");
-             ex.printStackTrace();
+             staticLogger.error("Exception in handlePairRequest", ex);
          }
      }
      static void handlePairResponse(int publicKeyId, DeRecIdentity senderId, DeRecIdentity receiverId, byte[] secretId,
@@ -179,7 +178,7 @@ class PairMessages {
                          .filter(hs -> hs.getId().getPublicEncryptionKey().equals(senderId.getPublicEncryptionKey()))
                          .findFirst();
                  HelperStatusImpl helperStatus = match.get();
-                 LibState.getInstance().registerPublicKeyId(publicKeyId, helperStatus.getId());
+//                 LibState.getInstance().registerPublicKeyId(publicKeyId, helperStatus.getId());
                  LibState.getInstance().printPublicKeyIdToIdentityMap();
                  staticLogger.debug("Got signature key: " + message.getPublicSignatureKey() + " for " + helperStatus.getId().getName());
                  helperStatus.getId().setPublicSignatureKey(message.getPublicSignatureKey());
@@ -200,8 +199,7 @@ class PairMessages {
                          LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId());
              }
          } catch (Exception ex) {
-             staticLogger.error("Exception in handlePairResponse");
-             ex.printStackTrace();
+             staticLogger.error("Exception in handlePairResponse", ex);
          }
      }
 
@@ -245,10 +243,7 @@ class PairMessages {
 
 
 
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId, false);
-
-//        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
-
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), true, secretId, receiverId, false);
 
 //        System.out.print("------ sending wire bytes: ");
 //        for (int i = 0; i < 20; i++) {
@@ -275,8 +270,7 @@ class PairMessages {
                 result, senderKind, publicSignatureKey,
                 communicationInfo, nonce, parameterRange);
 
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId, false);
-//        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray());
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), false, secretId, receiverId, false);
         sendHttpRequest(toUri, msgBytes);
     }
 }

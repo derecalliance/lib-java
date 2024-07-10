@@ -25,7 +25,6 @@ public class SharerStatusImpl implements DeRecHelper.SharerStatus {
         return pairingStatus;
     }
 
-    @Override
     public void setPairingStatus(PairingStatus pairingStatus) {
         this.pairingStatus = pairingStatus;
     }
@@ -35,7 +34,6 @@ public class SharerStatusImpl implements DeRecHelper.SharerStatus {
         return isRecovering;
     }
 
-    @Override
     public void setRecovering(boolean recovering) {
         isRecovering = recovering;
     }

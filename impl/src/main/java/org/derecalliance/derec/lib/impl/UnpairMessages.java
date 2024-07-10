@@ -34,7 +34,7 @@ public class UnpairMessages {
         Derecmessage.DeRecMessage deRecMessage = createUnpairRequestMessage(senderId, receiverId, secretId,
                 memo);
 
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId, true);
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), true, secretId, receiverId, true);
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
@@ -58,7 +58,7 @@ public class UnpairMessages {
                 result);
         staticLogger.debug("Generated response: ");
         MessageParser.printDeRecMessage(deRecMessage, "Sending messsage ");
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId, true);
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), false, secretId, receiverId, true);
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
@@ -113,8 +113,7 @@ public class UnpairMessages {
                     secretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(), result);
 
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleUnpairRequest");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleUnpairRequest", ex);
         }
     }
 
@@ -135,8 +134,7 @@ public class UnpairMessages {
             staticLogger.debug("In handleUnpairResponse from " + senderId.getName());
             // nothing to do
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleVerifyShareResponse");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleVerifyShareResponse", ex);
         }
     }
 }

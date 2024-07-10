@@ -5,7 +5,7 @@ import org.derecalliance.derec.lib.api.HelperFactory;
 
 public class HelperFactoryImpl implements HelperFactory {
     @Override
-    public DeRecHelper createHelper(String name, String uri) {
-        return new HelperImpl(name, uri);
+    public DeRecHelper createHelper(String name, String contact, String address) {
+        return new HelperImpl(name, contact, address);
     }
 }

@@ -2,6 +2,7 @@ package org.derecalliance.derec.lib.impl;
 
 import com.google.protobuf.ByteString;
 import org.derecalliance.derec.lib.api.DeRecIdentity;
+import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,11 +21,11 @@ public class LibIdentity  {
     private String signaturePublicKey;
     private int publicEncryptionKeyId;
     private int publicSignatureKeyId;
+    private DeRecSecret.Id secretId;
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     public LibIdentity(String name, String contact, String address) {
         try {
-            if (LibState.getInstance().useRealCryptoLib) {
                 Object[] encryptionKeyPair;
                 Object[] signatureKeyPair;
 
@@ -41,29 +42,8 @@ public class LibIdentity  {
                 setVariables(name, contact, address, encryptionPrivateKey, encryptionPublicKey,
                         signaturePrivateKey, signaturePublicKey, publicEncryptionKeyId,
                         publicSignatureKeyId);
-            } else {
-                KeyPair encryptionKeyPair;
-                KeyPair signatureKeyPair;
-
-                KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC");
-                SecureRandom secureRandom = new SecureRandom();
-                encryptionKeyPair = keyPairGenerator.generateKeyPair();
-                String encryptionPrivateKey = Base64.getEncoder().encodeToString(encryptionKeyPair.getPrivate().getEncoded());
-                String encryptionPublicKey = Base64.getEncoder().encodeToString(encryptionKeyPair.getPublic().getEncoded());
-                int publicEncryptionKeyId = getLast32BitsOfMD5(encryptionPublicKey);
-
-                signatureKeyPair = keyPairGenerator.generateKeyPair();
-                String signaturePrivateKey = Base64.getEncoder().encodeToString(signatureKeyPair.getPrivate().getEncoded());
-                String signaturePublicKey = Base64.getEncoder().encodeToString(signatureKeyPair.getPublic().getEncoded());
-                int publicSignatureKeyId = getLast32BitsOfMD5(signaturePublicKey);
-
-                setVariables(name, contact, address, encryptionPrivateKey, encryptionPublicKey,
-                        signaturePrivateKey, signaturePublicKey, publicEncryptionKeyId,
-                        publicSignatureKeyId);
-            }
         } catch (Exception ex) {
-            logger.error("Exception in LibIdentity");
-            ex.printStackTrace();
+            logger.error("Exception in LibIdentity", ex);
         }
     }
     public LibIdentity(String name, String contact, String address,
@@ -78,14 +58,16 @@ public class LibIdentity  {
                        String encryptionPrivateKey, String encryptionPublicKey, String signaturePrivateKey,
                        String signaturePublicKey, int publicEncryptionKeyId, int publicSignatureKeyId) {
         try {
-            myId = new DeRecIdentity(name, contact, address, encryptionPublicKey, signaturePublicKey);
-            LibState.getInstance().messageHashToIdentityMap.put(ByteString.copyFrom(myId.getPublicEncryptionKeyDigest()),
-                    myId);
+            myId = new DeRecIdentity(name, contact, address, publicEncryptionKeyId, encryptionPublicKey, signaturePublicKey);
+//            // Register in the messageHashAndSecretIdToIdentityMap table for self id.
+//            logger.debug("Adding " + name + " to messageHashAndSecretIdToIdentityMap");
+//            LibState.getInstance().registerMessageHashAndSecretIdToIdentity(ByteString.copyFrom(myId.getPublicEncryptionKeyDigest()),
+//                    secretId, myId);
+
             setKeys(encryptionPrivateKey, encryptionPublicKey, signaturePrivateKey,
                      signaturePublicKey, publicEncryptionKeyId, publicSignatureKeyId);
         } catch (Exception ex) {
-            System.err.println("Exception in LibIdentity.setVariables");
-            ex.printStackTrace();
+            logger.error("Exception in LibIdentity.setVariables", ex);
         }
     }
     public void setKeys( String encryptionPrivateKey, String encryptionPublicKey, String signaturePrivateKey,
@@ -98,8 +80,7 @@ public class LibIdentity  {
             this.publicEncryptionKeyId = publicEncryptionKeyId;
             this.publicSignatureKeyId = publicSignatureKeyId;
         } catch (Exception ex) {
-            System.err.println("Exception in LibIdentity.setKeys");
-            ex.printStackTrace();
+            logger.error("Exception in LibIdentity.setKeys", ex);
         }
     }
 

@@ -31,7 +31,7 @@ public class VerifyShareMessages {
             int versionNumber, byte[] nonce) {
         Derecmessage.DeRecMessage deRecMessage = createVerifyShareRequestMessage(senderId, receiverId, secretId,
                 versionNumber, nonce);
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), true, secretId, receiverId, true);
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), true, secretId, receiverId, true);
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
@@ -57,7 +57,7 @@ public class VerifyShareMessages {
                 result, versionNumber, nonce, hash);
         staticLogger.debug("Generated sendVerifyShareResponseMessage: ");
         MessageParser.printDeRecMessage(deRecMessage, "Sending sendVerifyShareResponseMessage ");
-        byte[] msgBytes = getPackagedBytes(publicKeyId, deRecMessage.toByteArray(), false, secretId, receiverId, true);
+        byte[] msgBytes = getPackagedBytes(receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), false, secretId, receiverId, true);
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
@@ -79,8 +79,7 @@ public class VerifyShareMessages {
             MessageDigest digest = MessageDigest.getInstance("SHA-384");
             return digest.digest(combined);
         } catch (Exception ex) {
-            staticLogger.error("Exception in calculateVerificationHash");
-            ex.printStackTrace();
+            staticLogger.error("Exception in calculateVerificationHash", ex);
             throw new RuntimeException("Exception in calculateVerificationHash");
 
         }
@@ -125,8 +124,7 @@ public class VerifyShareMessages {
                     secretId, LibState.getInstance().getMeHelper().getMyLibId().getPublicEncryptionKeyId(), result,
                     versionNumber, nonce, hash);
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleVerifyShareRequest");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleVerifyShareRequest", ex);
         }
     }
 
@@ -147,17 +145,16 @@ public class VerifyShareMessages {
             staticLogger.debug("In handleVerifyShareResponse from " + senderId.getName());
             var secret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
             staticLogger.debug("In handleVerifyShareResponse - Secret is: " + secret);
-            if (secret != null) {
-                int versionNumber = message.getVersion();
-                VersionImpl version = secret.getVersionByNumber(versionNumber);
+            int versionNumber = message.getVersion();
+            VersionImpl version = secret.getVersionByNumber(versionNumber);
+            if (secret != null && version != null) {
                 byte[] nonce = message.getNonce().toByteArray();
                 byte[] hash = message.getHash().toByteArray();
 
                 version.handleVerificationResponse(senderId, nonce, hash, versionNumber);
             }
         } catch (Exception ex) {
-            staticLogger.error("Exception in handleVerifyShareResponse");
-            ex.printStackTrace();
+            staticLogger.error("Exception in handleVerifyShareResponse", ex);
         }
     }
 }

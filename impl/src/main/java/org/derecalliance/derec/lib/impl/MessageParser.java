@@ -31,15 +31,19 @@ class MessageParser {
          String senderDigest = Base64.getEncoder().encodeToString(message.getSender().toByteArray());
          String receiverDigest = Base64.getEncoder().encodeToString(message.getReceiver().toByteArray());
          String secret = Base64.getEncoder().encodeToString(message.getSecretId().toByteArray());
-        DeRecIdentity senderId = LibState.getInstance().messageHashToIdentityMap.get(message.getSender());
-        DeRecIdentity receiverId = LibState.getInstance().messageHashToIdentityMap.get(message.getReceiver());
+//        DeRecIdentity senderId = LibState.getInstance().messageHashToIdentityMap.get(message.getSender());
+//        DeRecIdentity receiverId = LibState.getInstance().messageHashToIdentityMap.get(message.getReceiver());
+        DeRecIdentity senderId = LibState.getInstance().queryMessageHashAndSecretIdToIdentity(message.getSender(), new DeRecSecret.Id(message.getSecretId().toByteArray()));
+        DeRecIdentity receiverId = LibState.getInstance().queryMessageHashAndSecretIdToIdentity(message.getReceiver(), new DeRecSecret.Id(message.getSecretId().toByteArray()));
+
+
         LibState.getInstance().printMessageHashToIdentityMap();
 
         if (senderId == null) {
-            logger.error("printDeRecMessage: Could not find an entry in hashToIdentityMap for sender " + senderDigest);
+            logger.error("printDeRecMessage: Could not find an entry in hashToIdentityMap for sender " + Base64.getEncoder().encodeToString(senderDigest.getBytes()));
         }
         if (receiverId == null) {
-            logger.error("printDeRecMessage: Could not find an entry in hashToIdentityMap for receiver " + receiverDigest);
+            logger.error("printDeRecMessage: Could not find an entry in hashToIdentityMap for receiver " + Base64.getEncoder().encodeToString(receiverDigest.getBytes()));
         }
          logger.info(description + ",Sender: " + senderDigest + " ("  +
                  (senderId == null ? "unknown" : senderId.getName()) + "), Receiver: " + receiverDigest + " (" +
@@ -108,8 +112,7 @@ class MessageParser {
                                      Storeshare.DeRecShare.parseFrom(body.getGetShareResponseMessage().getCommittedDeRecShare().getDeRecShare());
                              logger.info("Version: " + shareMsg.getVersion());
                          } catch (InvalidProtocolBufferException ex) {
-                             logger.error("Exception in trying to parse the incoming share as a derec share");
-                             ex.printStackTrace();
+                             logger.error("Exception in trying to parse the incoming share as a derec share", ex);
                          }
                      } else if (body.hasUnpairResponseMessage()) {
                          logger.info("UnpairResponseMessage");
@@ -137,25 +140,33 @@ class MessageParser {
          }
          byte[] secretId = message.getSecretId().toByteArray();
          ByteString senderHash = message.getSender();
-         DeRecIdentity senderId = LibState.getInstance().messageHashToIdentityMap.get(senderHash);
+//         DeRecIdentity senderId = LibState.getInstance().messageHashToIdentityMap.get(senderHash);
+         DeRecIdentity senderId = LibState.getInstance().queryMessageHashAndSecretIdToIdentity(senderHash, new DeRecSecret.Id(secretId));
          if (senderId == null) {
-             logger.debug("Could not find an entry in hashToIdentityMap for sender " + senderHash);
+             logger.debug("Could not find an entry in hashToIdentityMap for sender " + Base64.getEncoder().encodeToString(senderHash.toByteArray()));
 
              LibState.getInstance().printMessageHashToIdentityMap();
-             if (!(message.hasMessageBodies() &&
+
+             boolean isPairRequestMessage = message.hasMessageBodies() &&
                      message.getMessageBodies().hasSharerMessageBodies() &&
                      message.getMessageBodies().getSharerMessageBodies().getSharerMessageBodyList().size() == 1 &&
-                     message.getMessageBodies().getSharerMessageBodies().getSharerMessageBodyList().get(0).hasPairRequestMessage())) {
+                     message.getMessageBodies().getSharerMessageBodies().getSharerMessageBodyList().get(0).hasPairRequestMessage();
+
+             if (! isPairRequestMessage) {
                  logger.debug("Dropping message");
                  return;
              } else {
                  logger.debug("Found null sender, but for a PairRequest - allowing the message to go through");
              }
          }
+         boolean isSharerMessage = message.hasMessageBodies() && message.getMessageBodies().hasSharerMessageBodies();
+
          ByteString receiverHash = message.getReceiver();
-         DeRecIdentity receiverId = LibState.getInstance().messageHashToIdentityMap.get(receiverHash);
+//         DeRecIdentity receiverId = LibState.getInstance().messageHashToIdentityMap.get(receiverHash);
+         DeRecIdentity receiverId = LibState.getInstance().queryMessageHashAndSecretIdToIdentity(receiverHash, isSharerMessage ? null : new DeRecSecret.Id(message.getSecretId().toByteArray()));
+
          if (receiverId == null) {
-             logger.info("Could not find an entry in hashToIdentityMap for receiver " + receiverHash);
+             logger.info("Could not find an entry in hashToIdentityMap for receiver " + Base64.getEncoder().encodeToString(receiverHash.toByteArray()));
              logger.info("Dropping message");
              LibState.getInstance().printMessageHashToIdentityMap();
              return;
@@ -207,19 +218,24 @@ class MessageParser {
 
         for (Derecmessage.DeRecMessage.SharerMessageBody body : bodies.getSharerMessageBodyList()) {
             if (body.hasPairRequestMessage()) {
+                logger.debug("PairRequestMessage");
                 handlePairRequest(publicKeyId, senderId, receiverId, secretId, body.getPairRequestMessage());
             } else if (body.hasGetShareRequestMessage()) {
                 logger.debug("GetShareRequestMessage");
                 handleGetShareRequest(publicKeyId, senderId, receiverId, new DeRecSecret.Id(secretId),body.getGetShareRequestMessage());
             } else if (body.hasGetSecretIdsVersionsRequestMessage()) {
+                logger.debug("GetSecretIdsVersionsRequestMessage");
                 handleGetSecretIdsVersionsRequest(publicKeyId, senderId, receiverId, new DeRecSecret.Id(secretId), body.getGetSecretIdsVersionsRequestMessage());
             } else if (body.hasStoreShareRequestMessage()) {
+                logger.debug("StoreShareRequestMessage");
                 handleStoreShareRequest(publicKeyId, senderId, receiverId, new DeRecSecret.Id(secretId),
                         body.getStoreShareRequestMessage());
             } else if (body.hasUnpairRequestMessage()) {
+                logger.debug("UnpairRequestMessage");
                 handleUnpairRequest(publicKeyId, senderId, receiverId, new DeRecSecret.Id(secretId),
                         body.getUnpairRequestMessage());
             } else if (body.hasVerifyShareRequestMessage()) {
+                logger.debug("VerifyShareRequestMessage");
                 handleVerifyShareRequest(publicKeyId, senderId, receiverId, new DeRecSecret.Id(secretId),
                         body.getVerifyShareRequestMessage());
             } else {

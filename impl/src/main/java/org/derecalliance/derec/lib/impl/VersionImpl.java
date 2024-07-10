@@ -105,7 +105,7 @@ public class VersionImpl implements DeRecVersion {
             // Create shares
             sharesMap.clear();
             if (numPairedHelpers >= LibState.getInstance().getMinNumberOfHelpersForSendingShares()) {
-                var myStatus = new SharerStatusImpl(LibState.getInstance().getMeSharer().getMyLibId().getMyId());
+                var myStatus = new SharerStatusImpl(secret.getLibId().getMyId());
                 Storeshare.Secret secretMsg = secret.createSecretMessage(versionNumber);
                 byte[] valueToProtect = secretMsg.toByteArray();
 
@@ -129,8 +129,7 @@ public class VersionImpl implements DeRecVersion {
             }
             logger.debug("Created shares. Sharesmap size: " + sharesMap.size());
         } catch (Exception ex) {
-            logger.error("Exception in createShares");
-            ex.printStackTrace();
+            logger.error("Exception in createShares", ex);
         }
     }
 
@@ -150,10 +149,10 @@ public class VersionImpl implements DeRecVersion {
                 logger.debug("************************************************ ************ *Sending share to " + entry.getKey().getId().getName());
 
                 StoreShareMessages.sendStoreShareRequestMessage(
-                        LibState.getInstance().getMeSharer().getMyLibId().getMyId(),
+                        secret.getLibId().getMyId(),
                         entry.getKey().getId(),
                         secret.getSecretId(),
-                        LibState.getInstance().getMeSharer().getMyLibId().getPublicEncryptionKeyId(),
+                        secret.getLibId().getPublicEncryptionKeyId(),
                         share);
             } else {
                 logger.debug("ShareImpl is already confirmed");
@@ -175,11 +174,11 @@ public class VersionImpl implements DeRecVersion {
 
             ShareImpl share = entry.getValue();
             VerifyShareMessages.sendVerifyShareRequestMessage(
-                    LibState.getInstance().getMeSharer().getMyLibId().getMyId(),
+                    secret.getLibId().getMyId(),
                     entry.getKey().getId(),
                     secret.getSecretId(),
-                    LibState.getInstance().getMeSharer().getMyLibId().getPublicEncryptionKeyId(),
-                    versionNumber, nonce);
+                    secret.getLibId().getPublicEncryptionKeyId(),
+                    versionNumber,nonce);
             logger.debug("Sent VerifyShareRequestMessage to " + entry.getKey().getId().getName());
             // Every time we send a verification request, increment the unsuccessful verification count by 1.
             unsuccessfulVerificationRequests.put(entry.getKey(),
