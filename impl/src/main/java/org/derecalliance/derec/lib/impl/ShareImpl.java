@@ -32,6 +32,11 @@ public class ShareImpl implements DeRecHelper.Share {
         return versionNumber;
     }
 
+    /**
+     * Get the SharerStatus associated with this share.
+     *
+     * @return SharerStatus object
+     */
     public DeRecHelper.SharerStatus getSharerStatus() {
         return sharerStatus;
     }

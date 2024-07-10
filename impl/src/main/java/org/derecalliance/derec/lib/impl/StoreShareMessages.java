@@ -24,7 +24,7 @@ public class StoreShareMessages {
      * @param senderId    DeRecIdentity of the message sender
      * @param receiverId  DeRecIdentity of the message receiver
      * @param secretId    Secret Id of the secret this message is being sent in the context of
-     * @param publicKeyId The public key id of the message sender
+     * @param publicKeyId The public key id of the message receiver
      * @param share       Share being sent
      */
     public static void sendStoreShareRequestMessage(
@@ -42,7 +42,7 @@ public class StoreShareMessages {
      * @param senderId      DeRecIdentity of the message sender
      * @param receiverId    DeRecIdentity of the message receiver
      * @param secretId      Secret Id of the secret this message is being sent in the context of
-     * @param publicKeyId   The public key id of the message sender
+     * @param publicKeyId   The public key id of the message receiver
      * @param result        Handling status of the message
      * @param versionNumber Version number of the share stored
      */
@@ -63,7 +63,7 @@ public class StoreShareMessages {
     /**
      * Handles receiving a StoreShareRequestMessage.
      *
-     * @param publicKeyId The public key id of the message sender
+     * @param publicKeyId The public key id of the message receiver
      * @param senderId    DeRecIdentity of the message sender
      * @param receiverId  DeRecIdentity of the message receiver
      * @param secretId    Secret Id of the secret this message was sent in the context of
@@ -107,7 +107,7 @@ public class StoreShareMessages {
             }
 
             // Check the keepList specified in the message, and remove any shares that are not in the keepList
-            ArrayList<Integer> keepList =  new ArrayList<>(message.getKeepListList());
+            ArrayList<Integer> keepList = new ArrayList<>(message.getKeepListList());
             staticLogger.debug("Received keeplist = " + keepList);
             LibState.getInstance().getMeHelper().deleteCommittedDerecSharesBasedOnUpdatedKeepList(senderId,
                     secretId, keepList);
@@ -131,7 +131,7 @@ public class StoreShareMessages {
     /**
      * Handles receiving a StoreShareResponseMessage.
      *
-     * @param publicKeyId The public key id of the message sender
+     * @param publicKeyId The public key id of the message receiver
      * @param senderId    DeRecIdentity of the message sender
      * @param receiverId  DeRecIdentity of the message receiver
      * @param secretId    Secret Id of the secret this message was sent in the context of

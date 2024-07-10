@@ -2,10 +2,7 @@ package org.derecalliance.derec.lib.impl;
 
 import org.derecalliance.derec.lib.api.*;
 
-import java.text.SimpleDateFormat;
-import java.time.Instant;
 import java.util.Base64;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,22 +16,19 @@ import org.derecalliance.derec.lib.api.DeRecSharer;
 import org.derecalliance.derec.lib.api.DeRecStatusNotification;
 
 import org.derecalliance.derec.lib.impl.commands.NewSecretCommand;
-import org.derecalliance.derec.lib.impl.commands.PeriodicWorkCommand;
 import org.derecalliance.derec.protobuf.Parameterrange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SharerImpl implements DeRecSharer {
-//    LibIdentity myHelperAndSharerId;
     String name;
     String contact;
     String address;
-
     ConcurrentHashMap<DeRecSecret.Id, SecretImpl> secretsMap;
-        Parameterrange.ParameterRange parameterRange;
-        Consumer<DeRecStatusNotification> listener;
-        RecoveryContext recoveryContext;
-        RecoveredState recoveredState;
+    Parameterrange.ParameterRange parameterRange;
+    Consumer<DeRecStatusNotification> listener;
+    RecoveryContext recoveryContext;
+    RecoveredState recoveredState;
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
 
@@ -42,15 +36,16 @@ public class SharerImpl implements DeRecSharer {
         this.name = name;
         this.contact = contact;
         this.address = address;
-            secretsMap = new ConcurrentHashMap<>();
-            parameterRange = Parameterrange.ParameterRange.newBuilder().build();
+        secretsMap = new ConcurrentHashMap<>();
+        parameterRange = Parameterrange.ParameterRange.newBuilder().build();
         LibState.getInstance().setMeSharer(this);
         recoveryContext = new RecoveryContext();
         recoveredState = new RecoveredState();
 
-            listener = notification -> {};
-            LibState.getInstance().init(contact, address);
-        }
+        listener = notification -> {
+        };
+        LibState.getInstance().init(contact, address);
+    }
 
     @Override
     public DeRecSecret newSecret(String description, byte[] bytesToProtect, List<DeRecIdentity> helperIds, boolean recovery) {
@@ -66,41 +61,41 @@ public class SharerImpl implements DeRecSharer {
         return null;
     }
 
-        @Override
-        public DeRecSecret newSecret(String description, byte[] bytesToProtect, boolean recovery) {
-            NewSecretCommand command = new NewSecretCommand(this, description, bytesToProtect, recovery);
-            LibState.getInstance().getCommandQueue().add(command);
-            try {
-                return command.getFuture().get();
-            } catch(Exception ex) {
-                logger.error("Exception in newSecret.", ex);
-                return null;
-            }
-        }
-
-        @Override
-        public DeRecSecret newSecret(DeRecSecret.Id secretId, String description, byte[] bytesToProtect, boolean recovery) {
-            logger.debug("Not implemented\n");
-            Thread.currentThread().getStackTrace();
+    @Override
+    public DeRecSecret newSecret(String description, byte[] bytesToProtect, boolean recovery) {
+        NewSecretCommand command = new NewSecretCommand(this, description, bytesToProtect, recovery);
+        LibState.getInstance().getCommandQueue().add(command);
+        try {
+            return command.getFuture().get();
+        } catch (Exception ex) {
+            logger.error("Exception in newSecret.", ex);
             return null;
         }
+    }
 
-        public SecretImpl processNewSecret(String description, byte[] bytesToProtect, boolean recovery) {
-            var secret = new SecretImpl(description, bytesToProtect, recovery);
-            synchronized (secretsMap) {
-                secretsMap.put(secret.getSecretId(), secret);
-            }
-            printSecretsMap();
-            return secret;
-        }
+    @Override
+    public DeRecSecret newSecret(DeRecSecret.Id secretId, String description, byte[] bytesToProtect, boolean recovery) {
+        logger.debug("Not implemented\n");
+        Thread.currentThread().getStackTrace();
+        return null;
+    }
 
-        @Override
-        public DeRecSecret getSecret(DeRecSecret.Id secretId) {
-            logger.debug("\n in getSecret for secretId: " +  Base64.getEncoder().encodeToString(secretId.getBytes()));
-            logger.debug("Secret map is:");
-            printSecretsMap();
-            return secretsMap.get(secretId);
+    public SecretImpl processNewSecret(String description, byte[] bytesToProtect, boolean recovery) {
+        var secret = new SecretImpl(description, bytesToProtect, recovery);
+        synchronized (secretsMap) {
+            secretsMap.put(secret.getSecretId(), secret);
         }
+        printSecretsMap();
+        return secret;
+    }
+
+    @Override
+    public DeRecSecret getSecret(DeRecSecret.Id secretId) {
+        logger.debug("\n in getSecret for secretId: " + Base64.getEncoder().encodeToString(secretId.getBytes()));
+        logger.debug("Secret map is:");
+        printSecretsMap();
+        return secretsMap.get(secretId);
+    }
 
     @Override
     public List<? extends DeRecSecret> getSecrets() {
@@ -163,7 +158,7 @@ public class SharerImpl implements DeRecSharer {
             for (DeRecHelperStatus helperStatus : recoveredSecret.getHelperStatuses()) {
                 // Install the original helpers' messageHashes
                 logger.debug("During recovery, installing in registerMessageHashAndSecretIdToIdentity: " + helperStatus.getId().getName());
-                LibState.getInstance().registerMessageHashAndSecretIdToIdentity( ByteString.copyFrom(helperStatus.getId().getPublicEncryptionKeyDigest()), recoveredSecret.getSecretId(), helperStatus.getId());
+                LibState.getInstance().registerMessageHashAndSecretIdToIdentity(ByteString.copyFrom(helperStatus.getId().getPublicEncryptionKeyDigest()), recoveredSecret.getSecretId(), helperStatus.getId());
             }
 
             // Install this secret's libIdentity in the publicKeyIdToLibIdentityMap
@@ -172,11 +167,9 @@ public class SharerImpl implements DeRecSharer {
 
             // Install own libIdentity in the messageHashAndSecretIdToIdentityMap
             logger.debug("During recovery, installing own identity in registerMessageHashAndSecretIdToIdentity: " + recoveredSecret.getLibId().getMyId().getName());
-            LibState.getInstance().registerMessageHashAndSecretIdToIdentity( ByteString.copyFrom(recoveredSecret.getLibId().getMyId().getPublicEncryptionKeyDigest()), recoveredSecret.getSecretId(), recoveredSecret.getLibId().getMyId());
+            LibState.getInstance().registerMessageHashAndSecretIdToIdentity(ByteString.copyFrom(recoveredSecret.getLibId().getMyId().getPublicEncryptionKeyDigest()), recoveredSecret.getSecretId(), recoveredSecret.getLibId().getMyId());
 
         }
-
-
 
         // Install the secrets and calculate the shares for the secrets
         for (SecretImpl recoveredSecret : recoveredState.getSecretsMap().values()) {
@@ -213,13 +206,13 @@ public class SharerImpl implements DeRecSharer {
     }
 
     /**
-     * Deliver's a notification to the Sharer's application
+     * Delivers a notification to the Sharer's application
      *
      * @param notification Notification
      */
     public void deliverNotification(StatusNotificationImpl notification) {
-            listener.accept(notification);
-        }
+        listener.accept(notification);
+    }
 
     /**
      * Delivers a notification to the Sharer's application
@@ -231,13 +224,13 @@ public class SharerImpl implements DeRecSharer {
      * @param version      Version associated with the notification
      * @param helperStatus HelperStatus associated with the notification
      */
-        public void deliverNotification(DeRecStatusNotification.NotificationType type,
-                                        DeRecStatusNotification.NotificationSeverity severity, String message,
-                                        SecretImpl secret, VersionImpl version, HelperStatusImpl helperStatus) {
-            StatusNotificationImpl notification = new StatusNotificationImpl(type, severity, message, secret, version,
-                    helperStatus);
-            listener.accept(notification);
-        }
+    public void deliverNotification(DeRecStatusNotification.NotificationType type,
+                                    DeRecStatusNotification.NotificationSeverity severity, String message,
+                                    SecretImpl secret, VersionImpl version, HelperStatusImpl helperStatus) {
+        StatusNotificationImpl notification = new StatusNotificationImpl(type, severity, message, secret, version,
+                helperStatus);
+        listener.accept(notification);
+    }
 
     public String getName() {
         return name;

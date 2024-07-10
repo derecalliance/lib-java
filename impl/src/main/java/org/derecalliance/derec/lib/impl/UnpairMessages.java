@@ -23,7 +23,7 @@ public class UnpairMessages {
      * @param senderId    DeRecIdentity of the message sender
      * @param receiverId  DeRecIdentity of the message receiver
      * @param secretId    Secret Id of the secret this message is being sent in the context of
-     * @param publicKeyId The public key id of the message sender
+     * @param publicKeyId The public key id of the message receiver
      * @param memo        Reason for unpairing
      */
     public static void sendUnpairRequestMessage(
@@ -44,7 +44,7 @@ public class UnpairMessages {
      * @param senderId    DeRecIdentity of the message sender
      * @param receiverId  DeRecIdentity of the message receiver
      * @param secretId    Secret Id of the secret this message is being sent in the context of
-     * @param publicKeyId The public key id of the message sender
+     * @param publicKeyId The public key id of the message receiver
      * @param result      Handling status of the message
      */
     public static void sendUnpairResponseMessage(
@@ -65,7 +65,7 @@ public class UnpairMessages {
     /**
      * Handles receiving an UnpairRequestMessage.
      *
-     * @param publicKeyId The public key id of the message sender
+     * @param publicKeyId The public key id of the message receiver
      * @param senderId    DeRecIdentity of the message sender
      * @param receiverId  DeRecIdentity of the message receiver
      * @param secretId    Secret Id of the secret this message was sent in the context of
@@ -120,7 +120,7 @@ public class UnpairMessages {
     /**
      * Handles receiving an UnpairResponseMessage.
      *
-     * @param publicKeyId The public key id of the message sender
+     * @param publicKeyId The public key id of the message receiver
      * @param senderId    DeRecIdentity of the message sender
      * @param receiverId  DeRecIdentity of the message receiver
      * @param secretId    Secret Id of the secret this message was sent in the context of

@@ -22,7 +22,7 @@ public class VerifyShareMessages {
      * @param senderId      DeRecIdentity of the message sender
      * @param receiverId    DeRecIdentity of the message receiver
      * @param secretId      Secret Id of the secret this message is being sent in the context of
-     * @param publicKeyId   The public key id of the message sender
+     * @param publicKeyId   The public key id of the message receiver
      * @param versionNumber Version number of the share being verified
      * @param nonce         Challenge nonce
      */
@@ -41,7 +41,7 @@ public class VerifyShareMessages {
      * @param senderId      DeRecIdentity of the message sender
      * @param receiverId    DeRecIdentity of the message receiver
      * @param secretId      Secret Id of the secret this message is being sent in the context of
-     * @param publicKeyId   The public key id of the message sender
+     * @param publicKeyId   The public key id of the message receiver
      * @param result        Handling status of the message
      * @param versionNumber Version number of the share being verified
      * @param nonce         Challenge nonce
@@ -89,7 +89,7 @@ public class VerifyShareMessages {
      * Handles receiving a VerifyShareRequest. Checks whether the Helper has the share specified and updates the Result
      * of the message.
      *
-     * @param publicKeyId The public key id of the message sender
+     * @param publicKeyId The public key id of the message receiver
      * @param senderId    DeRecIdentity of the message sender
      * @param receiverId  DeRecIdentity of the message receiver
      * @param secretId    Secret Id of the secret this message was sent in the context of
