@@ -7,7 +7,6 @@ import org.derecalliance.derec.lib.api.DeRecPairingStatus;
 public class SharerStatusImpl implements DeRecHelper.SharerStatus {
     DeRecIdentity sharerId;
     DeRecPairingStatus.PairingStatus pairingStatus;
-
     boolean isRecovering;
 
     public SharerStatusImpl(DeRecIdentity sharerId) {
@@ -29,6 +28,7 @@ public class SharerStatusImpl implements DeRecHelper.SharerStatus {
     public void setPairingStatus(PairingStatus pairingStatus) {
         this.pairingStatus = pairingStatus;
     }
+
     @Override
     public boolean isRecovering() {
         return isRecovering;

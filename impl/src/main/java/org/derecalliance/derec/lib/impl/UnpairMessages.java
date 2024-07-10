@@ -1,6 +1,5 @@
 package org.derecalliance.derec.lib.impl;
 
-//import org.derecalliance.derec.lib.LibState;
 import org.derecalliance.derec.lib.api.DeRecHelper;
 import org.derecalliance.derec.lib.api.DeRecIdentity;
 import org.derecalliance.derec.lib.api.DeRecPairingStatus;
@@ -12,14 +11,22 @@ import org.slf4j.LoggerFactory;
 import java.util.Timer;
 import java.util.TimerTask;
 
-//import static org.derecalliance.derec.api.MessageFactory.*;
-//import static org.derecalliance.derec.lib.ProtobufHttpClient.sendHttpRequest;
 import static org.derecalliance.derec.lib.impl.MessageFactory.createUnpairRequestMessage;
 import static org.derecalliance.derec.lib.impl.MessageFactory.getPackagedBytes;
 import static org.derecalliance.derec.lib.impl.ProtobufHttpClient.sendHttpRequest;
 
 public class UnpairMessages {
-    public static void sendUnpairRequestMessage (
+
+    /**
+     * Sends the UnpairRequestMessage.
+     *
+     * @param senderId    DeRecIdentity of the message sender
+     * @param receiverId  DeRecIdentity of the message receiver
+     * @param secretId    Secret Id of the secret this message is being sent in the context of
+     * @param publicKeyId The public key id of the message sender
+     * @param memo        Reason for unpairing
+     */
+    public static void sendUnpairRequestMessage(
             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId, int publicKeyId,
             String memo) {
         Logger staticLogger = LoggerFactory.getLogger(UnpairMessages.class.getName());
@@ -31,7 +38,16 @@ public class UnpairMessages {
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
-    public static void sendUnpairResponseMessage (
+    /**
+     * Sends the UnpairResponseMessage.
+     *
+     * @param senderId    DeRecIdentity of the message sender
+     * @param receiverId  DeRecIdentity of the message receiver
+     * @param secretId    Secret Id of the secret this message is being sent in the context of
+     * @param publicKeyId The public key id of the message sender
+     * @param result      Handling status of the message
+     */
+    public static void sendUnpairResponseMessage(
             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId, int publicKeyId,
             ResultOuterClass.Result result) {
         Logger staticLogger = LoggerFactory.getLogger(UnpairMessages.class.getName());
@@ -46,26 +62,36 @@ public class UnpairMessages {
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
+    /**
+     * Handles receiving an UnpairRequestMessage.
+     *
+     * @param publicKeyId The public key id of the message sender
+     * @param senderId    DeRecIdentity of the message sender
+     * @param receiverId  DeRecIdentity of the message receiver
+     * @param secretId    Secret Id of the secret this message was sent in the context of
+     * @param message     The UnpairRequestMessage
+     */
     public static void handleUnpairRequest(int publicKeyId, DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId,
-                                               Unpair.UnpairRequestMessage message) {
+                                           Unpair.UnpairRequestMessage message) {
         Logger staticLogger = LoggerFactory.getLogger(UnpairMessages.class.getName());
 
         try {
             // Process UnpairRequestMessage
             staticLogger.debug("In handleUnpairRequest");
 
+            // Notify the application
             LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.UNPAIR_INDICATION, senderId, secretId, -1);
 
             boolean requestOk = false;
             if (!(LibState.getInstance().getMeHelper().sharerStatuses.containsKey(senderId) &&
                     LibState.getInstance().getMeHelper().sharerStatuses.get(senderId).containsKey(secretId))) {
-                staticLogger.debug("Unpair request received for unknown Sharer.Secret: <" + senderId + "." + secretId +
-                        ">");
+                staticLogger.debug("Unpair request received for unknown Sharer.Secret: <" + senderId + "." + secretId + ">");
             } else {
                 requestOk = true;
-                var sharerToUnpair =
-                         LibState.getInstance().getMeHelper().sharerStatuses.get(senderId).get(secretId);
+                var sharerToUnpair = LibState.getInstance().getMeHelper().sharerStatuses.get(senderId).get(secretId);
+                // Set the pairing status of the Sharer to PENDING_REMOVAL
                 sharerToUnpair.setPairingStatus(DeRecPairingStatus.PairingStatus.PENDING_REMOVAL);
+                // Remove the sharer after 20 seconds
                 Timer timer = new Timer();
                 TimerTask task = new TimerTask() {
                     @Override
@@ -91,8 +117,17 @@ public class UnpairMessages {
         }
     }
 
+    /**
+     * Handles receiving an UnpairResponseMessage.
+     *
+     * @param publicKeyId The public key id of the message sender
+     * @param senderId    DeRecIdentity of the message sender
+     * @param receiverId  DeRecIdentity of the message receiver
+     * @param secretId    Secret Id of the secret this message was sent in the context of
+     * @param message     The UnpairResponseMessage
+     */
     public static void handleUnpairResponse(int publicKeyId, DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId,
-                                                 Unpair.UnpairResponseMessage message) {
+                                            Unpair.UnpairResponseMessage message) {
         Logger staticLogger = LoggerFactory.getLogger(UnpairMessages.class.getName());
 
         try {

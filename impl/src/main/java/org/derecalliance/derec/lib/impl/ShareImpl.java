@@ -1,6 +1,5 @@
 package org.derecalliance.derec.lib.impl;
 
-import org.derecalliance.derec.lib.api.*;
 import org.derecalliance.derec.lib.api.DeRecHelper;
 import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.derecalliance.derec.protobuf.Storeshare;
@@ -8,11 +7,10 @@ import org.derecalliance.derec.protobuf.Storeshare;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ShareImpl implements DeRecHelper.Share  {
+public class ShareImpl implements DeRecHelper.Share {
     private int versionNumber;
     private DeRecHelper.SharerStatus sharerStatus;
     private DeRecSecret.Id secretId;
-    private byte[] committedDeRecShareBytes;
     private Storeshare.CommittedDeRecShare committedDeRecShare;
     private boolean isConfirmed;
 
@@ -25,6 +23,11 @@ public class ShareImpl implements DeRecHelper.Share  {
         isConfirmed = false;
     }
 
+    /**
+     * Get the version number of this share.
+     *
+     * @return version number
+     */
     public int getVersionNumber() {
         return versionNumber;
     }
@@ -33,14 +36,29 @@ public class ShareImpl implements DeRecHelper.Share  {
         return sharerStatus;
     }
 
+    /**
+     * Get protobuf message CommittedDeRecShare
+     *
+     * @return CommittedDeRecShare
+     */
     public Storeshare.CommittedDeRecShare getCommittedDeRecShare() {
         return committedDeRecShare;
     }
 
+    /**
+     * Whether the share is confirmed (i.e. it has been verified by the Helper)
+     *
+     * @return boolean whether share is confirmed
+     */
     public boolean isConfirmed() {
         return isConfirmed;
     }
 
+    /**
+     * Update whether this share has been confirmed
+     *
+     * @param status boolean value for whether share has been confirmed
+     */
     public void updateConfirmation(boolean status) {
         isConfirmed = status;
     }
@@ -61,7 +79,6 @@ public class ShareImpl implements DeRecHelper.Share  {
         versionsList.add(versionNumber);
         return versionsList;
     }
-
 
     @Override
     public boolean remove() {
