@@ -178,7 +178,7 @@ public class VersionImpl implements DeRecVersion {
                     entry.getKey().getId(),
                     secret.getSecretId(),
                     secret.getLibId().getPublicEncryptionKeyId(),
-                    versionNumber,nonce);
+                    versionNumber, nonce);
             logger.debug("Sent VerifyShareRequestMessage to " + entry.getKey().getId().getName());
             // Every time we send a verification request, increment the unsuccessful verification count by 1.
             unsuccessfulVerificationRequests.put(entry.getKey(),
