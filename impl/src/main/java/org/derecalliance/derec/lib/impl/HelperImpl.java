@@ -1,11 +1,6 @@
 package org.derecalliance.derec.lib.impl;
 
-// import org.derecalliance.derec.lib.api.Dummy;
-
 import com.google.protobuf.ByteString;
-// import org.derecalliance.derec.lib.LibIdentity;
-// import org.derecalliance.derec.lib.LibState;
-// import org.derecalliance.derec.lib.Version;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -23,8 +18,6 @@ public class HelperImpl implements DeRecHelper {
     CopyOnWriteArrayList<Long> generatedNonces = new CopyOnWriteArrayList<>();
     Parameterrange.ParameterRange parameterRange;
     boolean paused = false;
-    //    ConcurrentHashMap<DeRecIdentity, SharerStatusImpl> sharerStatuses = new ConcurrentHashMap<>();
-
     ConcurrentHashMap<DeRecIdentity, ConcurrentHashMap<DeRecSecret.Id, SharerStatusImpl>> sharerStatuses =
             new ConcurrentHashMap<>();
 
@@ -40,6 +33,7 @@ public class HelperImpl implements DeRecHelper {
         return null;
     }; // do nothing
 
+    // Map of shares being stored by this Helper
     private final ConcurrentHashMap<String, ConcurrentHashMap<DeRecSecret.Id, ConcurrentHashMap<Integer, ShareImpl>>>
             recdCommittedDeRecShares;
 
@@ -63,7 +57,6 @@ public class HelperImpl implements DeRecHelper {
         public DeRecHelper.Notification.Type getType() {
             return type;
         }
-        ;
 
         public DeRecIdentity getSharerId() {
             return sharerId;
@@ -112,20 +105,9 @@ public class HelperImpl implements DeRecHelper {
 
     public HelperImpl(String name, String contact, String address) {
         recdCommittedDeRecShares = new ConcurrentHashMap<>();
-        //        // If a LibIdentity is already created for my role as a Sharer, reuse that LibIdentity, otherwise
-        // create a
-        //        // new LibIdentity
-        //        if (LibState.getInstance().myHelperAndSharerId == null) {
-        //            logger.debug("HelperImpl: Creating new LibIdentity as a Helper for " + name);
-        //            myLibId = new LibIdentity(name, uri, uri);
-        //            LibState.getInstance().myHelperAndSharerId = myLibId;
-        //        } else {
-        //            logger.debug("HelperImpl: Reusing Sharer's LibIdentity as a Helper for " + name);
-        //            myLibId = LibState.getInstance().myHelperAndSharerId;
-        //        }
-
         myLibId = new LibIdentity(name, contact, address);
         parameterRange = Parameterrange.ParameterRange.newBuilder().build();
+
         // Register in the messageHashAndSecretIdToIdentityMap table for self id.
         // Since we are a helper, we don't have a secret id, hence register with a null secret id
         logger.debug("Adding myself (Helper) " + name + " to messageHashAndSecretIdToIdentityMap");
@@ -138,27 +120,6 @@ public class HelperImpl implements DeRecHelper {
         LibState.getInstance().setMeHelper(this);
         LibState.getInstance().init(contact, address);
     }
-
-    //    @Override
-    //    public Share newShare(DeRecSecret.Id secretId, int versionNumber, DeRecHelper.SharerStatus sharerStatus,
-    //                              byte[] committedDeRecShareBytes) {
-    //        return new ShareImpl(secretId, versionNumber,sharerStatus,committedDeRecShareBytes);
-    //    }
-    //    @Override
-    //    public Notification newNotification(DeRecHelper.Notification.Type type, DeRecIdentity sharerId,
-    //                                     DeRecSecret.Id secretId,
-    //                        int versionNumber) {
-    //        return new Notification(type, sharerId, secretId, versionNumber);
-    //    }
-    //    @Override
-    //    public DeRecHelper.NotificationResponse newNotificationResponse(boolean result, String reason) {
-    //        return new NotificationResponse(result, reason);
-    //    }
-    // @Override
-    // public DeRecHelper.Share newShare(DeRecSecret.Id secretId, int versionNumber, SharerStatus sharerStatus,
-    //                       byte[] committedDeRecShareBytes) {
-    //    return null;
-    // }
 
     @Override
     public DeRecHelper.Notification newNotification(
@@ -210,9 +171,14 @@ public class HelperImpl implements DeRecHelper {
         sharerStatuses.remove(sharerStatus.getId());
     }
 
+    /**
+     * Removes a sharer and removes all shares stored for them
+     *
+     * @param sharerId DeRecIdentity of the sharer to be removed
+     * @param secretId SecretId to remove
+     * @return
+     */
     public boolean removeSharer(DeRecIdentity sharerId, DeRecSecret.Id secretId) {
-        // This removes the SharerStatusImpl for the given secretId
-
         SharerStatusImpl sharerStatus = getSharerStatus(sharerId, secretId);
 
         // Remove from sharerStatuses
@@ -252,21 +218,6 @@ public class HelperImpl implements DeRecHelper {
 
         return allSharerStatuses;
     }
-
-    //    @Override
-    //    public void removeSecret(SharerStatus sharerStatus, DeRecSecret.Id secretId) {
-    //
-    //    }
-    //
-    //    @Override
-    //    public void removeVersion(SharerStatus sharerStatus, DeRecSecret.Id secretId, int versionNumber) {
-    //
-    //    }
-
-    //    @Override
-    //    public List<? extends DeRecSecret.Id> getSecretIds(SharerStatus sharerStatus) {
-    //        return null;
-    //    }
 
     @Override
     public void removeSecret(SharerStatus sharerStatus, DeRecSecret.Id secretId) {
@@ -313,15 +264,16 @@ public class HelperImpl implements DeRecHelper {
     @Override
     public void setListener(Function<DeRecHelper.Notification, DeRecHelper.NotificationResponse> listener) {
         this.listener = listener;
-
-        //        DeRecHelper.Notification dummy = this.new
-        // Notification(DeRecHelper.Notification.StandardHelperNotificationType.PAIR_INDICATION,
-        //                null, null, 101);
-        //
-        //        DeRecHelper.NotificationResponse response = listener.apply(dummy);
-        //        logger.debug("---------- Response: " + response);
     }
 
+    /**
+     * Stores a share for a given sharer
+     *
+     * @param sharerStatus  Sharer whom the Helper is storing a share for
+     * @param secretId      SecretId of the share
+     * @param versionNumber Version number of the share
+     * @param share         The share
+     */
     void addShare(SharerStatusImpl sharerStatus, DeRecSecret.Id secretId, int versionNumber, ShareImpl share) {
         logger.debug(
                 "in addshare, sharer pubEncryptionKey: " + sharerStatus.getId().getPublicEncryptionKey() + "the "
@@ -355,9 +307,8 @@ public class HelperImpl implements DeRecHelper {
     }
 
     /**
-     * Adds a new sharer (identified by SharerStatusImpl) for which this helper
-     * will start
-     * storing data
+     * Adds a new sharer (identified by SharerStatusImpl) for which this helper will start storing data
+     *
      * @param sharerStatus
      */
     void addSharer(SharerStatusImpl sharerStatus, DeRecSecret.Id secretId) {
@@ -379,13 +330,11 @@ public class HelperImpl implements DeRecHelper {
 
     /**
      * Adds a new secret for a sharer
+     *
      * @param sharerStatus Sharer
-     * @param secretId Secret id
+     * @param secretId     Secret id
      */
     void addSecret(SharerStatusImpl sharerStatus, DeRecSecret.Id secretId) {
-        //        sharerStatus.addSecret(secretId);
-        //        recdCommittedDeRecShares.computeIfAbsent(sharerStatus, k -> new ConcurrentHashMap<>())
-        //                .putIfAbsent(secretId, new ConcurrentHashMap<>());
         ConcurrentHashMap<DeRecSecret.Id, ConcurrentHashMap<Integer, ShareImpl>> smap =
                 recdCommittedDeRecShares.get(sharerStatus.getId().getPublicEncryptionKey());
         if (smap == null) {
@@ -412,14 +361,7 @@ public class HelperImpl implements DeRecHelper {
 
         logger.debug("in validateAndRemoveNonce: nonces are:" + generatedNonces.toString());
         return true;
-        //        if (generatedNonces.contains(nonce)) {
-        //            generatedNonces.remove(nonce);
-        //            return true;
-        //        }
-        //        return false;
     }
-
-    void clearSharerInfo(DeRecIdentity sharerId, DeRecSecret.Id secretId) {}
 
     public boolean validateParameterRange(Parameterrange.ParameterRange parameterRange) {
         return true;
@@ -429,6 +371,9 @@ public class HelperImpl implements DeRecHelper {
         return myLibId;
     }
 
+    /**
+     * isPaused() and setPaused() are used only for demo purposes to show a Helper losing connectivity for some time
+     */
     public boolean isPaused() {
         return paused;
     }
@@ -478,8 +423,16 @@ public class HelperImpl implements DeRecHelper {
         return ret;
     }
 
+    /**
+     * Based on the keepList received in a StoreShareRequestMessage, update the versions stored.
+     *
+     * @param sharerId DeRecIdentity of the sharer
+     * @param secretId SecretId the keepList is for
+     * @param keepList The keepList from the StoreShareRequestMessage
+     */
     void deleteCommittedDerecSharesBasedOnUpdatedKeepList(
             DeRecIdentity sharerId, DeRecSecret.Id secretId, List<Integer> keepList) {
+        // TODO: add logic to not update keepList if the versions in keepList are >= currently stored versions
         logger.debug("In deleteCommittedDerecSharesBasedOnUpdatedKeepList, keeplist is " + keepList);
         // Remove stored shares
         List<Integer> storedVersionNumbersList =
@@ -498,14 +451,29 @@ public class HelperImpl implements DeRecHelper {
         });
     }
 
+    /**
+     * Reconcile sharer identities after receiving the UI response from the helper
+     *
+     * @param publicEncryptionKey
+     * @param sharerStatuses
+     */
     public void registerIdentityReconciliation(String publicEncryptionKey, List<SharerStatusImpl> sharerStatuses) {
         publicKeyToLostSharerMap.put(publicEncryptionKey, sharerStatuses);
     }
 
+    /**
+     * Get the previous identities of the Sharer who was recovering
+     *
+     * @param publicEncryptionKey publicEncryptionKey of the previous sharer
+     * @return SharerStatus object
+     */
     public List<SharerStatusImpl> getLostSharers(String publicEncryptionKey) {
         return publicKeyToLostSharerMap.get(publicEncryptionKey);
     }
 
+    /**
+     * Print routine for publicKeyToLostSharerMap
+     */
     public void printPublicKeyToLostSharerMap() {
         logger.debug("printPublicKeyToLostSharerMap");
         for (String key : publicKeyToLostSharerMap.keySet()) {
@@ -514,6 +482,15 @@ public class HelperImpl implements DeRecHelper {
         logger.debug("---- End of printPublicKeyToLostSharerMap ----");
     }
 
+    /**
+     * Deliver a notification to the UI
+     *
+     * @param type          Notification type
+     * @param sharerId      DeRecIdentity of the Sharer
+     * @param secretId      SecretId
+     * @param versionNumber Version numeber
+     * @return NotificationResponse
+     */
     public DeRecHelper.NotificationResponse deliverNotification(
             DeRecHelper.Notification.Type type, DeRecIdentity sharerId, DeRecSecret.Id secretId, int versionNumber) {
         Notification notification = new Notification(type, sharerId, secretId, versionNumber);

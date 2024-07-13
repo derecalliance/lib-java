@@ -64,7 +64,7 @@ public class UnpairMessages {
     }
 
     /**
-     * Handles receiving an UnpairRequestMessage.
+     * Handles the received UnpairRequestMessage.
      *
      * @param publicKeyId The public key id of the message receiver
      * @param senderId    DeRecIdentity of the message sender
@@ -143,7 +143,7 @@ public class UnpairMessages {
     }
 
     /**
-     * Handles receiving an UnpairResponseMessage.
+     * Handles the received UnpairResponseMessage.
      *
      * @param publicKeyId The public key id of the message receiver
      * @param senderId    DeRecIdentity of the message sender

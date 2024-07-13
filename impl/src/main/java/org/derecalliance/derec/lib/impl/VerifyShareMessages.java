@@ -40,7 +40,7 @@ public class VerifyShareMessages {
     }
 
     /**
-     * Sends  the VerifyShareResponseMessage
+     * Sends the VerifyShareResponseMessage
      *
      * @param senderId      DeRecIdentity of the message sender
      * @param receiverId    DeRecIdentity of the message receiver
@@ -95,7 +95,7 @@ public class VerifyShareMessages {
     }
 
     /**
-     * Handles receiving a VerifyShareRequest. Checks whether the Helper has the share specified and updates the Result
+     * Handles the received VerifyShareRequest. Checks whether the Helper has the share specified and updates the Result
      * of the message.
      *
      * @param publicKeyId The public key id of the message receiver
@@ -162,7 +162,7 @@ public class VerifyShareMessages {
     }
 
     /**
-     * Handles receiving a VerifyShareResponse.
+     * Handles the received VerifyShareResponse.
      *
      * @param publicKeyId The public key id of the message sender
      * @param senderId    DeRecIdentity of the message sender

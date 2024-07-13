@@ -16,8 +16,13 @@ import org.slf4j.LoggerFactory;
 class PairMessages {
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
-    PairMessages() {}
-
+    /**
+     * Extract a specific value from the CommunicationInfo entry in the PairRequestMessage protobuf
+     *
+     * @param key     The key value to be extracted
+     * @param message PairRequestMessage
+     * @return CommunicationInfo entry value associated with the given key
+     */
     public static Optional<String> extractFromCommunicationInfo(String key, Pair.PairRequestMessage message) {
         Optional<String> val = message.getCommunicationInfo().getCommunicationInfoEntriesList().stream()
                 .filter(e -> key.equals(e.getKey()))
@@ -27,15 +32,13 @@ class PairMessages {
         return val;
     }
 
-    public static Optional<String> extractFromCommunicationInfo(String key, Pair.PairResponseMessage message) {
-        Optional<String> val = message.getCommunicationInfo().getCommunicationInfoEntriesList().stream()
-                .filter(e -> key.equals(e.getKey()))
-                .map(e -> e.getStringValue())
-                .findFirst();
-
-        return val;
-    }
-
+    /**
+     * Create a DeRecIdentity from the information in the PairRequestMessage
+     *
+     * @param secretId SecretId that pairing was done for
+     * @param message  PairRequestMessage
+     * @return DeRecIdentity that was created
+     */
     public static Optional<DeRecIdentity> createIdentityFromPairRequest(
             DeRecSecret.Id secretId, Pair.PairRequestMessage message) {
         Optional<String> name = extractFromCommunicationInfo("name", message);
@@ -49,18 +52,27 @@ class PairMessages {
                 message.getPublicKeyId(),
                 message.getPublicEncryptionKey(),
                 message.getPublicSignatureKey()));
-        //         sharerIdentity.ifPresent(id ->
-        // LibState.getInstance().messageHashToIdentityMap.put(ByteString.copyFrom(id.getPublicEncryptionKeyDigest()),
-        //                 id));
+
         sharerIdentity.ifPresent(id -> LibState.getInstance()
                 .registerMessageHashAndSecretIdToIdentity(
                         ByteString.copyFrom(id.getPublicEncryptionKeyDigest()), secretId, id));
         return sharerIdentity;
     }
 
+    /**
+     * Handles the received PairRequestMessage.
+     *
+     * @param publicKeyId  The public key id of the message receiver
+     * @param nullSenderId DeRecIdentity of the message sender (null because the user does not know the sender yet)
+     * @param receiverId   DeRecIdentity of the message receiver
+     * @param secretId     SecretId of the secret this message was sent in the context of
+     * @param message      The PairRequestMessage
+     */
     static void handlePairRequest(
             int publicKeyId,
-            DeRecIdentity nullSenderId,
+            DeRecIdentity
+                    nullSenderId, // senderId is null because the message receiver has not yet created a DeRecIdentity
+            // for the message sender
             DeRecIdentity receiverId,
             byte[] secretId,
             Pair.PairRequestMessage message) {
@@ -73,7 +85,6 @@ class PairMessages {
             }
 
             // Debug - prints contents of the received PairRequest message
-
             staticLogger.debug("Nonce: " + message.getNonce());
             List<Communicationinfo.CommunicationInfoKeyValue> lst =
                     message.getCommunicationInfo().getCommunicationInfoEntriesList();
@@ -82,7 +93,7 @@ class PairMessages {
                 staticLogger.debug("key: " + entry.getKey() + ", Val: " + entry.getStringValue());
             }
 
-            // Validation checks
+            // Validation checks for nonce, parameter range, and address
             boolean validNonce = LibState.getInstance().getMeHelper().validateAndRemoveNonce(message.getNonce());
             if (!validNonce) {
                 staticLogger.debug("Invalid nonce " + message.getNonce() + " " + "received");
@@ -111,13 +122,13 @@ class PairMessages {
             Communicationinfo.CommunicationInfo communicationInfo =
                     buildCommunicationInfo(LibState.getInstance().getMeHelper().getMyLibId());
 
+            // Create a DeRecIdentity for the sharer
             Optional<DeRecIdentity> sharerId = createIdentityFromPairRequest(new DeRecSecret.Id(secretId), message);
             if (sharerId.isEmpty()) {
                 return;
             }
             staticLogger.debug("Created DeRecIdentity: " + sharerId.get());
 
-            //             LibState.getInstance().registerPublicKeyId(publicKeyId, sharerId.get());
             LibState.getInstance().printPublicKeyIdToIdentityMap();
             SharerStatusImpl sharerStatus = new SharerStatusImpl(sharerId.get());
             sharerStatus.setRecovering(message.getSenderKind() == Pair.SenderKind.SHARER_RECOVERY);
@@ -126,9 +137,9 @@ class PairMessages {
             LibState.getInstance().getMeHelper().addSecret(sharerStatus, new DeRecSecret.Id(secretId));
             staticLogger.debug("added secret");
 
+            // If the sharer is in recovery mode, wait for the UI response from the helper to reconcile the sharer's
+            // old identities with their recovering identity
             if (message.getSenderKind() == Pair.SenderKind.SHARER_RECOVERY) {
-                //
-                // LibState.getInstance().getMeHelper().deliverNotification(DeRecHelper.Notification.StandardHelperNotificationType.PAIR_INDICATION_RECOVERY, sharerStatus.getId(), new DeRecSecret.Id(secretId), -1);
                 var uiResponse = (HelperImpl.NotificationResponse) LibState.getInstance()
                         .getMeHelper()
                         .deliverNotification(
@@ -178,6 +189,15 @@ class PairMessages {
         }
     }
 
+    /**
+     * Handles the received PairResponseMessage.
+     *
+     * @param publicKeyId The public key id of the message receiver
+     * @param senderId    DeRecIdentity of the message sender
+     * @param receiverId  DeRecIdentity of the message receiver
+     * @param secretId    SecretId of the secret this message was sent in the context of
+     * @param message     The PairResponseMessage
+     */
     static void handlePairResponse(
             int publicKeyId,
             DeRecIdentity senderId,
@@ -194,14 +214,16 @@ class PairMessages {
                         .filter(hs -> hs.getId().getPublicEncryptionKey().equals(senderId.getPublicEncryptionKey()))
                         .findFirst();
                 HelperStatusImpl helperStatus = match.get();
-                //                 LibState.getInstance().registerPublicKeyId(publicKeyId, helperStatus.getId());
                 LibState.getInstance().printPublicKeyIdToIdentityMap();
                 staticLogger.debug("Got signature key: " + message.getPublicSignatureKey() + " for "
                         + helperStatus.getId().getName());
+                // Update the signature key of the Helper using the signature key found in the message
                 helperStatus.getId().setPublicSignatureKey(message.getPublicSignatureKey());
                 staticLogger.debug("Setting pairing status to Paired for "
                         + helperStatus.getId().getName());
+                // Update the pairing status of the Helper to Paired
                 helperStatus.setStatus(DeRecPairingStatus.PairingStatus.PAIRED);
+                // Deliver a notification to the application
                 LibState.getInstance()
                         .getMeSharer()
                         .deliverNotification(
@@ -212,9 +234,12 @@ class PairMessages {
                                 null,
                                 helperStatus);
 
+                // Create shares and update keepList if necessary
                 secret.helperStatusChanged();
             }
 
+            // If the Sharer is recovering a secret, send a GetSecretIdsVersionsRequestMessage to that Helper who sent
+            // the PairResponseMessage
             if (secret.isRecovering()) {
                 staticLogger.debug("In handlePairResponse, I am recovering");
                 sendGetSecretIdsVersionsRequestMessage(
@@ -228,6 +253,12 @@ class PairMessages {
         }
     }
 
+    /**
+     * Populates the protobuf CommunicationInfo based on user's data
+     *
+     * @param libId Lib identity of the user
+     * @return CommunicationInfo protobuf
+     */
     public static Communicationinfo.CommunicationInfo buildCommunicationInfo(LibIdentity libId) {
         Communicationinfo.CommunicationInfoKeyValue nameKeyValue =
                 Communicationinfo.CommunicationInfoKeyValue.newBuilder()
@@ -252,6 +283,21 @@ class PairMessages {
         return communicationInfo;
     }
 
+    /**
+     * Sends a PairRequestMessage
+     *
+     * @param senderId            DeRecIdentity of the message sender
+     * @param receiverId          DeRecIdentity of the message receiver
+     * @param secretId            SecretId of the secret this message is being sent in the context of
+     * @param toUri               URI address to send the message to
+     * @param senderKind          Sharer in normal or recovery mode
+     * @param publicSignatureKey  Public signature key of the message sender
+     * @param publicEncryptionKey Public encryption key of the message sender
+     * @param publicKeyId         publicKeyId of the message sender
+     * @param communicationInfo   communicationInfo of the message sender
+     * @param nonce               Nonce to identify pairing session
+     * @param parameterRange      parameterRange of the message sender
+     */
     public static void sendPairRequestMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -276,32 +322,30 @@ class PairMessages {
                 nonce,
                 parameterRange);
 
-        //        System.out.print("------ created protobuf  bytes: ");
-        //        for (int i = 0; i < 20; i++) {
-        //            System.out.print(deRecMessage.toByteArray()[i] + ", ");
-        //        }
-        //        staticLogger.debug("");
-
         byte[] msgBytes = getPackagedBytes(
                 receiverId.getPublicEncryptionKeyId(), deRecMessage.toByteArray(), true, secretId, receiverId, false);
-
-        //        System.out.print("------ sending wire bytes: ");
-        //        for (int i = 0; i < 20; i++) {
-        //            System.out.print(msgBytes[i] + ", ");
-        //        }
-        //        staticLogger.debug("");
-
         sendHttpRequest(toUri, msgBytes);
     }
 
+    /**
+     * @param senderId           DeRecIdentity of the message sender
+     * @param receiverId         DeRecIdentity of the message receiver
+     * @param secretId           SecretId of the secret this message is being sent in the context of
+     * @param toUri              URI address to send the message to
+     * @param publicKeyId        publicKeyId of the message receiver
+     * @param result             Handling status of the message
+     * @param senderKind         Helper
+     * @param publicSignatureKey Public signature key of the message receiver
+     * @param communicationInfo  communicationInfo of the message sender
+     * @param nonce              Nonce to identify pairing session
+     * @param parameterRange     parameterRange of the message sender
+     */
     public static void sendPairResponseMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
             DeRecSecret.Id secretId,
             String toUri,
-            int publicKeyId, // Not in the
-            // message, but is needed to for
-            // prepending in the message
+            int publicKeyId,
             ResultOuterClass.Result result,
             Pair.SenderKind senderKind,
             String publicSignatureKey,

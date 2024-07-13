@@ -1,8 +1,6 @@
 package org.derecalliance.derec.lib.impl;
 
-// import org.derecalliance.derec.lib.LibState;
 import static org.derecalliance.derec.lib.impl.PairMessages.buildCommunicationInfo;
-import static org.derecalliance.derec.lib.impl.utils.MiscUtils.*;
 
 import java.time.Instant;
 import org.derecalliance.derec.lib.api.DeRecHelperStatus;
@@ -13,8 +11,6 @@ import org.derecalliance.derec.protobuf.Communicationinfo;
 import org.derecalliance.derec.protobuf.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-// import static org.derecalliance.derec.api.PairMessages.buildCommunicationInfo;
 
 public class HelperStatusImpl implements DeRecHelperStatus {
     DeRecIdentity id;
@@ -27,7 +23,6 @@ public class HelperStatusImpl implements DeRecHelperStatus {
         this.id = id;
         this.secret = secret;
         pairingStatus = PairingStatus.NONE;
-        //        startPairing(secret.getSecretId(), id, nonce);
     }
 
     @Override
@@ -53,6 +48,13 @@ public class HelperStatusImpl implements DeRecHelperStatus {
         this.pairingStatus = pairingStatus;
     }
 
+    /**
+     * Initiates pairing with a Helper by sending a PairRequestMessage
+     *
+     * @param secretId   SecretId pairing is happening for
+     * @param receiverId DeRecIdentity of the message receiver
+     * @param nonce      Nonce to identify pairing session
+     */
     void startPairing(DeRecSecret.Id secretId, DeRecIdentity receiverId, long nonce) {
 
         SecretImpl secret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
@@ -74,6 +76,7 @@ public class HelperStatusImpl implements DeRecHelperStatus {
                 communicationInfo,
                 nonce,
                 LibState.getInstance().getMeSharer().getParameterRange());
+        // Update the pairing status of the helper
         pairingStatus = PairingStatus.INVITED;
     }
 

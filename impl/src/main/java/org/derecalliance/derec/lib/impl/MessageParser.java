@@ -15,7 +15,6 @@ import static org.derecalliance.derec.lib.impl.VerifyShareMessages.handleVerifyS
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-// import org.derecalliance.derec.lib.LibState;
 import java.util.Base64;
 import org.derecalliance.derec.lib.api.DeRecIdentity;
 import org.derecalliance.derec.lib.api.DeRecSecret;
@@ -26,14 +25,20 @@ import org.slf4j.LoggerFactory;
 class MessageParser {
     static Logger logger = LoggerFactory.getLogger(MessageParser.class.getName());
 
+    /**
+     * Print routine for a received message
+     *
+     * @param message     Received DeRecMessage
+     * @param description Additional information to print
+     */
     public static void printDeRecMessage(Derecmessage.DeRecMessage message, String description) {
         String senderDigest =
                 Base64.getEncoder().encodeToString(message.getSender().toByteArray());
         String receiverDigest =
                 Base64.getEncoder().encodeToString(message.getReceiver().toByteArray());
         String secret = Base64.getEncoder().encodeToString(message.getSecretId().toByteArray());
-        //        DeRecIdentity senderId = LibState.getInstance().messageHashToIdentityMap.get(message.getSender());
-        //        DeRecIdentity receiverId = LibState.getInstance().messageHashToIdentityMap.get(message.getReceiver());
+
+        // Find the message sender and receiver by querying LibState's messageHashAndSecretIdToIdentityMap
         DeRecIdentity senderId = LibState.getInstance()
                 .queryMessageHashAndSecretIdToIdentity(
                         message.getSender(),
@@ -58,6 +63,7 @@ class MessageParser {
                         + "), Receiver: " + receiverDigest + " ("
                         + (receiverId == null ? "unknown" : receiverId.getName() + "), Secret: " + secret));
 
+        // Log Sharer and Helper message details
         if (message.hasMessageBodies()) {
             if (message.getMessageBodies().hasSharerMessageBodies()) {
                 for (Derecmessage.DeRecMessage.SharerMessageBody body :
@@ -83,18 +89,6 @@ class MessageParser {
                         Storeshare.StoreShareRequestMessage msg = body.getStoreShareRequestMessage();
                         logger.info(" - VersionImpl: " + msg.getVersion() + ", ShareImpl size: "
                                 + msg.getShare().size() + ", KeepList: " + msg.getKeepListList());
-                        //                        try {
-                        //                            CommittedDeRecShare committedDeRecShare =
-                        //                                   new
-                        // CommittedDeRecShare(Storeshare.CommittedDeRecShare.parseFrom(msg.getShare()));
-                        ////                            logger.debug("Committed DeRecShare (recd) is: " +
-                        // committedDeRecShare.toString());
-                        //                        } catch (InvalidProtocolBufferException ex) {
-                        //                            logger.error("Exception in trying to parse the incoming share as a
-                        // committed derec " +
-                        //                                    "share");
-                        //                            ex.printStackTrace();
-                        //                        }
                     } else if (body.hasUnpairRequestMessage()) {
                         logger.info("UnpairRequestMessage");
                     } else if (body.hasVerifyShareRequestMessage()) {
@@ -130,10 +124,6 @@ class MessageParser {
                                         .getResult()
                                         .getStatus()
                                         .toString());
-                        //                         logger.debug("ShareImpl size: " +
-                        // body.getGetShareResponseMessage().getCommittedDeRecShare().getDeRecShare().size());
-                        //                         logger.debug("Commitment: " +
-                        // body.getGetShareResponseMessage().getCommittedDeRecShare().getCommitment());
                         try {
                             Storeshare.DeRecShare shareMsg =
                                     Storeshare.DeRecShare.parseFrom(body.getGetShareResponseMessage()
@@ -164,22 +154,27 @@ class MessageParser {
         }
     }
 
+    /**
+     * Parses the received DeRecMessage
+     *
+     * @param publicKeyId publicKeyId of the message receiver
+     * @param message     Received message
+     */
     void parseMessage(int publicKeyId, Derecmessage.DeRecMessage message) {
-
         printDeRecMessage(message, "Received ");
+        // Handles pause functionality for demo application
         if (LibState.getInstance().getMeHelper().isPaused()) {
             logger.debug("Ignoring message because I'm paused");
             return;
         }
+
         byte[] secretId = message.getSecretId().toByteArray();
         ByteString senderHash = message.getSender();
-        //         DeRecIdentity senderId = LibState.getInstance().messageHashToIdentityMap.get(senderHash);
         DeRecIdentity senderId =
                 LibState.getInstance().queryMessageHashAndSecretIdToIdentity(senderHash, new DeRecSecret.Id(secretId));
         if (senderId == null) {
             logger.debug("Could not find an entry in hashToIdentityMap for sender "
                     + Base64.getEncoder().encodeToString(senderHash.toByteArray()));
-
             LibState.getInstance().printMessageHashToIdentityMap();
 
             boolean isPairRequestMessage = message.hasMessageBodies()
@@ -196,17 +191,20 @@ class MessageParser {
                             .hasPairRequestMessage();
 
             if (!isPairRequestMessage) {
+                // If the senderId is null, and the message is not a PairRequestMessage, it is invalid.
+                // Drop the message.
                 logger.debug("Dropping message");
                 return;
             } else {
+                // The senderId is only null in the case of a PairRequestMessage
                 logger.debug("Found null sender, but for a PairRequest - allowing the message to go through");
             }
         }
+
         boolean isSharerMessage =
                 message.hasMessageBodies() && message.getMessageBodies().hasSharerMessageBodies();
 
         ByteString receiverHash = message.getReceiver();
-        //         DeRecIdentity receiverId = LibState.getInstance().messageHashToIdentityMap.get(receiverHash);
         DeRecIdentity receiverId = LibState.getInstance()
                 .queryMessageHashAndSecretIdToIdentity(
                         receiverHash,
@@ -215,6 +213,7 @@ class MessageParser {
                                 : new DeRecSecret.Id(message.getSecretId().toByteArray()));
 
         if (receiverId == null) {
+            // Drop the message if we cannot find the receiverId
             logger.info("Could not find an entry in hashToIdentityMap for receiver "
                     + Base64.getEncoder().encodeToString(receiverHash.toByteArray()));
             logger.info("Dropping message");
@@ -241,6 +240,15 @@ class MessageParser {
         }
     }
 
+    /**
+     * Parse HelperMessageBodies within the DeRecMessage, and handles messages within HelperMessageBodies
+     *
+     * @param publicKeyId publicKeyId of the message receiver
+     * @param senderId    DeRecIdentity of the message sender
+     * @param receiverId  DeRecIdentity of the message receiver
+     * @param secretId    SecretId extracted from the DeRecmessage
+     * @param bodies      HelperMessageBodies
+     */
     private void parseHelperMessageBodies(
             int publicKeyId,
             DeRecIdentity senderId,
@@ -248,6 +256,7 @@ class MessageParser {
             byte[] secretId,
             Derecmessage.DeRecMessage.HelperMessageBodies bodies) {
         logger.debug("in parseHelperMessageBodies");
+
         for (Derecmessage.DeRecMessage.HelperMessageBody body : bodies.getHelperMessageBodyList()) {
             if (body.hasPairResponseMessage()) {
                 handlePairResponse(publicKeyId, senderId, receiverId, secretId, body.getPairResponseMessage());
@@ -296,6 +305,15 @@ class MessageParser {
         }
     }
 
+    /**
+     * Parse SharerMessageBodies within the DeRecMessage, and handles messages within SharerMessageBodies
+     *
+     * @param publicKeyId publicKeyId of the message receiver
+     * @param senderId    DeRecIdentity of the message sender
+     * @param receiverId  DeRecIdentity of the message receiver
+     * @param secretId    SecretId extracted from the DeRecmessage
+     * @param bodies      SharerMessageBodies
+     */
     private void parseSharerMessageBodies(
             int publicKeyId,
             DeRecIdentity senderId,

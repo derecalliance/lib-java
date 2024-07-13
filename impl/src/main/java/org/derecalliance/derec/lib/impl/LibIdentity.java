@@ -3,7 +3,6 @@ package org.derecalliance.derec.lib.impl;
 import java.security.MessageDigest;
 import java.util.Base64;
 import org.derecalliance.derec.lib.api.DeRecIdentity;
-import org.derecalliance.derec.lib.api.DeRecSecret;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,19 +14,27 @@ public class LibIdentity {
     private String signaturePublicKey;
     private int publicEncryptionKeyId;
     private int publicSignatureKeyId;
-    private DeRecSecret.Id secretId;
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
+    /**
+     * LibIdentity constructor that generates encryption and signature key pairs and sets class variables
+     *
+     * @param name    User's name
+     * @param contact User's contact
+     * @param address User's address
+     */
     public LibIdentity(String name, String contact, String address) {
         try {
             Object[] encryptionKeyPair;
             Object[] signatureKeyPair;
 
+            // Generate encryption key pair using crypto library
             encryptionKeyPair = LibState.getInstance().getDerecCryptoImpl().encryptionKeyGen();
             String encryptionPrivateKey = Base64.getEncoder().encodeToString(((byte[]) encryptionKeyPair[1]));
             String encryptionPublicKey = Base64.getEncoder().encodeToString(((byte[]) encryptionKeyPair[0]));
             int publicEncryptionKeyId = getLast32BitsOfMD5(encryptionPublicKey);
 
+            // Generate signature key pair using crypto library
             signatureKeyPair = LibState.getInstance().getDerecCryptoImpl().signatureKeyGen();
             String signaturePrivateKey = Base64.getEncoder().encodeToString(((byte[]) signatureKeyPair[1]));
             String signaturePublicKey = Base64.getEncoder().encodeToString(((byte[]) signatureKeyPair[0]));
@@ -48,6 +55,9 @@ public class LibIdentity {
         }
     }
 
+    /**
+     * LibIdentity constructor that sets class variables
+     */
     public LibIdentity(
             String name,
             String contact,
@@ -70,6 +80,9 @@ public class LibIdentity {
                 publicSignatureKeyId);
     }
 
+    /**
+     * Sets class variables and creates DeRecIdentity for the user
+     */
     public void setVariables(
             String name,
             String contact,
@@ -83,12 +96,6 @@ public class LibIdentity {
         try {
             myId = new DeRecIdentity(
                     name, contact, address, publicEncryptionKeyId, encryptionPublicKey, signaturePublicKey);
-            //            // Register in the messageHashAndSecretIdToIdentityMap table for self id.
-            //            logger.debug("Adding " + name + " to messageHashAndSecretIdToIdentityMap");
-            //
-            // LibState.getInstance().registerMessageHashAndSecretIdToIdentity(ByteString.copyFrom(myId.getPublicEncryptionKeyDigest()),
-            //                    secretId, myId);
-
             setKeys(
                     encryptionPrivateKey,
                     encryptionPublicKey,
@@ -101,6 +108,9 @@ public class LibIdentity {
         }
     }
 
+    /**
+     * Sets keys
+     */
     public void setKeys(
             String encryptionPrivateKey,
             String encryptionPublicKey,
@@ -123,14 +133,6 @@ public class LibIdentity {
     public DeRecIdentity getMyId() {
         return myId;
     }
-
-    //    public KeyPair getEncryptionKeyPair() {
-    //        return encryptionKeyPair;
-    //    }
-
-    //    public KeyPair getSignatureKeyPair() {
-    //        return signatureKeyPair;
-    //    }
 
     public String getEncryptionPrivateKey() {
         return encryptionPrivateKey;
@@ -156,30 +158,12 @@ public class LibIdentity {
         return publicSignatureKeyId;
     }
 
-    public void setEncryptionPrivateKey(String encryptionPrivateKey) {
-        this.encryptionPrivateKey = encryptionPrivateKey;
-    }
-
-    public void setEncryptionPublicKey(String encryptionPublicKey) {
-        this.encryptionPublicKey = encryptionPublicKey;
-    }
-
-    public void setSignaturePrivateKey(String signaturePrivateKey) {
-        this.signaturePrivateKey = signaturePrivateKey;
-    }
-
-    public void setSignaturePublicKey(String signaturePublicKey) {
-        this.signaturePublicKey = signaturePublicKey;
-    }
-
-    public void setPublicEncryptionKeyId(int publicEncryptionKeyId) {
-        this.publicEncryptionKeyId = publicEncryptionKeyId;
-    }
-
-    public void setPublicSignatureKeyId(int publicSignatureKeyId) {
-        this.publicSignatureKeyId = publicSignatureKeyId;
-    }
-
+    /**
+     * Used to generate the publicEncryptionKeyId and publicSignatureKeyId
+     *
+     * @param input String input
+     * @return last 32 bits of the MD5 hash
+     */
     public static int getLast32BitsOfMD5(String input) {
         Logger staticLogger = LoggerFactory.getLogger(LibIdentity.class.getName());
         try {
@@ -197,7 +181,6 @@ public class LibIdentity {
                     | (last4Bytes[1] << 16) & 0x00FF0000
                     | (last4Bytes[2] << 8) & 0x0000FF00
                     | (last4Bytes[3]) & 0x000000FF;
-            //            int result = new BigInteger(1, last4Bytes).intValue();
             staticLogger.debug("For input " + input + " getLast32BitsOfMD5() generated result " + result);
             return result;
 

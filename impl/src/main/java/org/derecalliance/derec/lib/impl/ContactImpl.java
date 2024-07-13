@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ContactImpl implements DeRecContact {
-
     private int publicEncryptionKeyId;
     private String publicEncryptionKey;
     private String transportUri;

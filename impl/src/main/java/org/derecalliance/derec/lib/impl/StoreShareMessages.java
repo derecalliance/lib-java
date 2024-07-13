@@ -67,7 +67,7 @@ public class StoreShareMessages {
     }
 
     /**
-     * Handles receiving a StoreShareRequestMessage.
+     * Handles the received StoreShareRequestMessage.
      *
      * @param publicKeyId The public key id of the message receiver
      * @param senderId    DeRecIdentity of the message sender
@@ -160,7 +160,7 @@ public class StoreShareMessages {
     }
 
     /**
-     * Handles receiving a StoreShareResponseMessage.
+     * Handles the received StoreShareResponseMessage.
      *
      * @param publicKeyId The public key id of the message receiver
      * @param senderId    DeRecIdentity of the message sender
