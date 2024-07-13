@@ -11,6 +11,9 @@ import org.derecalliance.derec.lib.impl.commands.MessageReceivedCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Provides HTTP server interface to receive HTTP messages
+ */
 public class ProtobufHttpServer {
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
@@ -31,7 +34,6 @@ public class ProtobufHttpServer {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            boolean onlyAcceptPairingMessages = false;
             logger.info("In http MyHandler:: Received message");
             if ("POST".equals(exchange.getRequestMethod())) {
                 InputStream is = exchange.getRequestBody();

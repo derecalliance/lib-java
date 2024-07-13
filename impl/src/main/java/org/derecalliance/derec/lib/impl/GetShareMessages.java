@@ -12,6 +12,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class GetShareMessages {
+    /**
+     * Sends getShareRequestMessage
+     *
+     * @param senderId           DeRecIdentity of the message sender
+     * @param receiverId         DeRecIdentity of the message receiver
+     * @param currentSecretId    Current secretId of the Sharer
+     * @param recoveringSecretId The secretId to recover
+     * @param publicKeyId        publicKeyId of the receiver
+     * @param shareVersion       Version number to recover
+     */
     public static void sendGetShareRequestMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -34,6 +44,17 @@ public class GetShareMessages {
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
+    /**
+     * Sends GetShareResponseMessage
+     *
+     * @param senderId            DeRecIdentity of the message sender
+     * @param receiverId          DeRecIdentity of the message receiver
+     * @param currentSecretId     SecretId this message is being sent in the context of
+     * @param recoveringSecretId  SecretId to recover
+     * @param publicKeyId         publicKeyId of the message receiver
+     * @param result              Handling status of the message
+     * @param committedDeRecShare CommittedDeRecShare to return to Sharer
+     */
     public static void sendGetShareResponseMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -58,6 +79,15 @@ public class GetShareMessages {
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
+    /**
+     * Handles a received GetShareRequestMessage
+     *
+     * @param publicKeyId     publicKeyId of the message receiver
+     * @param senderId        DeRecIdentity of the message sender
+     * @param receiverId      DeRecIdentity of the message receiver
+     * @param currentSecretId SecretId this message was sent in the context of
+     * @param message         GetShareRequestMessage
+     */
     public static void handleGetShareRequest(
             int publicKeyId,
             DeRecIdentity senderId,
@@ -67,6 +97,7 @@ public class GetShareMessages {
         Logger staticLogger = LoggerFactory.getLogger(GetShareMessages.class.getName());
 
         try {
+            // Deliver a notification to the application
             LibState.getInstance()
                     .getMeHelper()
                     .deliverNotification(
@@ -74,9 +105,9 @@ public class GetShareMessages {
                             senderId,
                             null,
                             message.getShareVersion());
-            // Process PairRequestMessage
+            // Process GetShareRequestMessage
             staticLogger.debug("In handleGetShareRequest");
-            //            byte[] secretIdBytes = secretId.getBytes();//message.getSecretId().toByteArray();
+            // Find the secretId that the Sharer is requesting a share of in the message
             DeRecSecret.Id recoveringSecretId =
                     new DeRecSecret.Id(message.getSecretId().toByteArray());
             int versionNumber = message.getShareVersion();
@@ -89,12 +120,9 @@ public class GetShareMessages {
                     + recoveringSecretId + ", Ver: "
                     + versionNumber);
 
-            //            (Optional<ShareImpl>)
             staticLogger.debug("recdCommittedShares: "
                     + LibState.getInstance().getMeHelper().sharesToString());
-            // TODO: Add the check that is commented below. This should make sure that the we look for the original
-            //  sharer's public key. The recovering sharer's public key should be mapped to the original sharer's
-            //  public key in LibState after receiving a Pairing Request.
+            // Look up the recoveringSecretId in the Helper's map of shares
             Optional<ShareImpl> shareToReturn =
                     (Optional<ShareImpl>) LibState.getInstance().getMeHelper().getShares().stream()
                             //    commented because the sharer's public key has changed when they are recovering...
@@ -106,29 +134,12 @@ public class GetShareMessages {
                             .findFirst();
 
             ResultOuterClass.Result result;
-            //            CommittedDeRecShare committedDeRecShare = null;
             if (shareToReturn.isPresent()) {
                 staticLogger.debug("shareToReturn is present: from "
                         + shareToReturn.get().getSharer().getId().getName());
-
-                //                try {
-                //                    CommittedDeRecShare cds =
-                //                            new
-                // CommittedDeRecShare(Storeshare.CommittedDeRecShare.parseFrom(shareToReturn.get().getCommittedDeRecShareBytes()));
-                //                    staticLogger.debug("In handleGetShareRequest Committed DeRecShare  is: " +
-                // cds.toString());
-                //                } catch (InvalidProtocolBufferException ex) {
-                //                    staticLogger.error("Exception in trying to parse the committed derec share");
-                //                    ex.printStackTrace();
-                //                }
-
                 result = ResultOuterClass.Result.newBuilder()
                         .setStatus(ResultOuterClass.StatusEnum.OK)
                         .build();
-                //                committedDeRecShare = new CommittedDeRecShare(
-                //
-                // Storeshare.CommittedDeRecShare.parseFrom(ByteString.copyFrom(shareToReturn.get().getCommittedDeRecShareBytes())));
-
             } else {
                 staticLogger.debug("Oops. I couldn't find a shareToReturn");
                 result = ResultOuterClass.Result.newBuilder()
@@ -150,6 +161,15 @@ public class GetShareMessages {
         }
     }
 
+    /**
+     * Handles a received GetShareResponseMessage
+     *
+     * @param publicKeyId publicKeyId of the message receiver
+     * @param senderId    DeRecIdentity of the message sender
+     * @param receiverId  DeRecIdentity of the message receiver
+     * @param secretId    SecretId this message was sent in the context of
+     * @param message     The GetShareResponseMessage
+     */
     public static void handleGetShareResponse(
             int publicKeyId,
             DeRecIdentity senderId,
@@ -163,12 +183,13 @@ public class GetShareMessages {
             var secret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
             staticLogger.debug("In handleGetShareResponse - Secret is: " + secret.getDescription());
             staticLogger.debug("Result: " + message.getResult().getStatus().toString());
-            //            CommittedDeRecShare committedDeRecShare = new
-            // CommittedDeRecShare(message.getCommittedDeRecShare());
+
+            // Parse the received share
             Storeshare.CommittedDeRecShare committedDeRecShare = message.getCommittedDeRecShare();
             Storeshare.DeRecShare deRecShare = Storeshare.DeRecShare.parseFrom(
                     message.getCommittedDeRecShare().getDeRecShare());
             staticLogger.debug("Version: " + deRecShare.getVersion());
+
             Optional<HelperStatusImpl> helperStatusOptional = (Optional<HelperStatusImpl>)
                     LibState.getInstance().getMeSharer().getSecret(secretId).getHelperStatuses().stream()
                             .filter(hs -> hs.getId().getPublicEncryptionKey().equals(senderId.getPublicEncryptionKey()))
@@ -181,6 +202,7 @@ public class GetShareMessages {
             int versionNumber = deRecShare.getVersion();
             VersionImpl fakeVersion = new VersionImpl(secret, new byte[] {}, versionNumber);
 
+            // Deliver notification to the application
             LibState.getInstance()
                     .getMeSharer()
                     .deliverNotification(
@@ -191,6 +213,7 @@ public class GetShareMessages {
                             fakeVersion,
                             helperStatusOptional.get());
 
+            // Store the share and attempt recovery if possible.
             boolean success = LibState.getInstance()
                     .getMeSharer()
                     .getRecoveryContext()
@@ -202,6 +225,7 @@ public class GetShareMessages {
                 SecretImpl recoveredSecret = (SecretImpl)
                         LibState.getInstance().getMeSharer().getRecoveredState().getSecret(recoveredSecretId);
 
+                // Deliver a notification to the application that recovery is complete
                 staticLogger.debug("Sending RECOVERY_COMPLETE notification");
                 staticLogger.debug("  for secret: " + recoveredSecret.getDescription() + ", version: "
                         + recoveredSecret.getVersionByNumber(versionNumber).getVersionNumber());

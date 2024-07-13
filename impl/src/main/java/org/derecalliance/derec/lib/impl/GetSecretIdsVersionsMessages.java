@@ -13,10 +13,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class GetSecretIdsVersionsMessages {
+
+    /**
+     * Sends a GetSecretIdsVersionsRequestMessage
+     *
+     * @param senderId    DeRecIdentity of the message sender
+     * @param receiverId  DeRecIdentity of the message receiver
+     * @param secretId    SecretId this message is being sent in the context of
+     * @param publicKeyId publicKeyId of the receiver
+     */
     public static void sendGetSecretIdsVersionsRequestMessage(
             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId, int publicKeyId) {
         var hs = (HelperStatusImpl)
                 ((SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId)).getHelperStatusById(receiverId);
+        // Deliver a notification
         LibState.getInstance()
                 .getMeSharer()
                 .deliverNotification(
@@ -34,6 +44,16 @@ public class GetSecretIdsVersionsMessages {
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
+    /**
+     * Sends a GetSecretIdsVersionsResponseMessage
+     *
+     * @param senderId            DeRecIdentity of the message sender
+     * @param receiverId          DeRecIdentity of the message receiver
+     * @param secretId            SecretId this message is being sent in the context of
+     * @param publicKeyId         publicKeyId of the message receiver
+     * @param result              Handling status of the message
+     * @param secretIdAndVersions Map of known secretIds and versions
+     */
     public static void sendGetSecretIdsVersionsResponseMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -53,6 +73,15 @@ public class GetSecretIdsVersionsMessages {
         sendHttpRequest(receiverId.getAddress(), msgBytes);
     }
 
+    /**
+     * Handles a received GetSecretIdsVersionsRequest
+     *
+     * @param publicKeyId publicKeyId of the message receiver
+     * @param senderId    DeRecIdentity of the message sender
+     * @param receiverId  DeRecIdentity of the message receiver
+     * @param secretId    SecretId the message was sent in the context of
+     * @param message     The GetSecretIdsVersionsRequest message
+     */
     public static void handleGetSecretIdsVersionsRequest(
             int publicKeyId,
             DeRecIdentity senderId,
@@ -66,23 +95,7 @@ public class GetSecretIdsVersionsMessages {
             boolean found = false;
             HashMap<DeRecSecret.Id, ArrayList<Integer>> secretIdAndVersions = new HashMap<>();
 
-            // First find any one previously stored share that matches the secretId in the GetSecretIdsVersionsRequest
-            // message
-            //            Optional<ShareImpl> matchedShareOptional = ((List<ShareImpl>)
-            // LibState.getInstance().getMeHelper().getShares())
-            //                    .stream()
-            //                    .filter(s -> Arrays.equals(s.getSecretId().getBytes(), secretId.getBytes()))
-            //                    .findFirst();
-            //            if (!matchedShareOptional.isPresent()) {
-            //                staticLogger.debug("No matching share found");
-            //                found = false;
-            //            } else {
-
-            // Find the sharerStatus that had stored this share previously. Basically, get the sharerStatus of
-            // the helper that has been lost
-            //                SharerStatusImpl lostSharer = (SharerStatusImpl)
-            // LibState.getInstance().getMeHelper().getShares()
-            //                        .get().getSharerStatus();
+            // Find the previous identities of the Sharer
             List<SharerStatusImpl> lostSharers =
                     LibState.getInstance().getMeHelper().getLostSharers(senderId.getPublicEncryptionKey());
             if (lostSharers == null) {
@@ -114,6 +127,7 @@ public class GetSecretIdsVersionsMessages {
                 }
             }
 
+            // Deliver a notification to the application
             var uiResponse = (HelperImpl.NotificationResponse) LibState.getInstance()
                     .getMeHelper()
                     .deliverNotification(
@@ -131,6 +145,7 @@ public class GetSecretIdsVersionsMessages {
                     .setStatus(okToSend ? ResultOuterClass.StatusEnum.OK : ResultOuterClass.StatusEnum.FAIL)
                     .setMemo(okToSend ? "Found Shares" : "Shares not found")
                     .build();
+            // Send the message
             GetSecretIdsVersionsMessages.sendGetSecretIdsVersionsResponseMessage(
                     receiverId,
                     senderId,
@@ -143,6 +158,15 @@ public class GetSecretIdsVersionsMessages {
         }
     }
 
+    /**
+     * Handles a recevied GetSecretIdsVersionsResponse
+     *
+     * @param publicKeyId publicKeyId of the message sender
+     * @param senderId    DeRecIdentity of the message sender
+     * @param receiverId  DeRecIdentity of the message receiver
+     * @param secretId    SecretId the message was sent in the context of
+     * @param message     The GetSecretIdsVersionsResponseMessage
+     */
     public static void handleGetSecretIdsVersionsResponse(
             int publicKeyId,
             DeRecIdentity senderId,
@@ -161,6 +185,7 @@ public class GetSecretIdsVersionsMessages {
             HelperStatusImpl helperStatus = helperStatusOptional.get();
 
             if (message.getResult().getStatus() != ResultOuterClass.StatusEnum.OK) {
+                // Deliver a notification to the application that the status was not OK
                 LibState.getInstance()
                         .getMeSharer()
                         .deliverNotification(
@@ -172,6 +197,7 @@ public class GetSecretIdsVersionsMessages {
                                 helperStatus);
                 return;
             } else {
+                // Deliver a notification to the application that the status was OK
                 LibState.getInstance()
                         .getMeSharer()
                         .deliverNotification(
@@ -189,22 +215,7 @@ public class GetSecretIdsVersionsMessages {
                         + Base64.getEncoder()
                                 .encodeToString(secretListItem.getSecretId().toByteArray()));
 
-                //                if (secretId.equals(new DeRecSecret.Id(secretListItem.getSecretId().toByteArray()))) {
-                //                    // Register that this helper has these versions. The periodic task will send out
-                // the getShareRequests
-                //                    LibState.getInstance().getMeSharer().getRecoveryContext().helperHasVersions(
-                //                            new DeRecSecret.Id(secretListItem.getSecretId().toByteArray()),
-                //                            helperStatus, new ArrayList<>(secretListItem.getVersionsList()));
-                //                } else {
-                //                    staticLogger.debug("I am processing secret " + secretId + ", but I found a new
-                // secret " + new DeRecSecret.Id(secretListItem.getSecretId().toByteArray()));
-                //
-                // LibState.getInstance().getMeSharer().deliverNotification(DeRecStatusNotification.StandardNotificationType.RECOVERY_SECRET_SHARE_DISCOVERED,
-                //                            DeRecStatusNotification.NotificationSeverity.NORMAL,
-                //                            "Recoverable Secret/Share discovered: " + new
-                // DeRecSecret.Id(secretListItem.getSecretId().toByteArray()),
-                //                            null, null, helperStatus);
-                //                }
+                // Store what secretIds and versions the helper has
                 LibState.getInstance()
                         .getMeSharer()
                         .getRecoveryContext()
@@ -212,6 +223,8 @@ public class GetSecretIdsVersionsMessages {
                                 new DeRecSecret.Id(secretListItem.getSecretId().toByteArray()),
                                 helperStatus,
                                 new ArrayList<>(secretListItem.getVersionsList()));
+
+                // Deliver a notification to the application that a new secretId was found to recover
                 LibState.getInstance()
                         .getMeSharer()
                         .deliverNotification(

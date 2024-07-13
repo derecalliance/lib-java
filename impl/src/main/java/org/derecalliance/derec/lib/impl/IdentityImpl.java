@@ -14,12 +14,12 @@ public class IdentityImpl extends DeRecIdentity {
     /**
      * Create a helper info
      *
-     * @param name      human-readable name
-     * @param contact   contact address - e.g. email
-     * @param address   DeRec address
+     * @param name                  human-readable name
+     * @param contact               contact address - e.g. email
+     * @param address               DeRec address
      * @param publicEncryptionKeyId public encryption key id
-     * @param publicEncryptionKey PEM encoded public encryption key
-     * @param publicSignatureKey PEM encoded public signature key
+     * @param publicEncryptionKey   PEM encoded public encryption key
+     * @param publicSignatureKey    PEM encoded public signature key
      */
     public IdentityImpl(
             String name,

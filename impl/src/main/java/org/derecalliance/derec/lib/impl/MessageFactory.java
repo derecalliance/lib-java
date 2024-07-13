@@ -1,14 +1,11 @@
 package org.derecalliance.derec.lib.impl;
 
-// import org.derecalliance.derec.api.DeRecMessage;
-
 import static org.derecalliance.derec.lib.impl.MessageParser.logger;
 import static org.derecalliance.derec.lib.impl.MessageParser.printDeRecMessage;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Timestamp;
-// import org.derecalliance.derec.lib.Share;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.*;
@@ -22,16 +19,15 @@ import org.slf4j.LoggerFactory;
 
 class MessageFactory {
 
-    public class ParsedResult {
-        final byte[] decryptedMessage;
-        final boolean onlyAcceptPairingMessages;
-
-        public ParsedResult(byte[] decryptedMessage, boolean onlyAcceptPairingMessages) {
-            this.decryptedMessage = decryptedMessage;
-            this.onlyAcceptPairingMessages = onlyAcceptPairingMessages;
-        }
-    }
-
+    /**
+     * Creates a DeRecMessage containing a HelperMessageBody
+     *
+     * @param senderId      DeRecIdentity of the message sender
+     * @param receiverId    DeRecIdentity of the message receiver
+     * @param secretId      SecretId of the secret the message is being sent in the context of
+     * @param messageSetter HelperMessageBody builder
+     * @return DeRecMessage protobuf
+     */
     static Derecmessage.DeRecMessage createHelperMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -50,7 +46,7 @@ class MessageFactory {
                 .setNanos(now.getNano())
                 .build();
 
-        // Build the complete message
+        // Build the complete DeRecMessage
         return Derecmessage.DeRecMessage.newBuilder()
                 .setProtocolVersionMajor(0)
                 .setProtocolVersionMinor(9)
@@ -66,6 +62,15 @@ class MessageFactory {
                 .build();
     }
 
+    /**
+     * Creates a DeRecMessage containing a SharerMessageBody
+     *
+     * @param senderId      DeRecIdentity of the message sender
+     * @param receiverId    DeRecIdentity of the message receiver
+     * @param secretId      SecretId of the secret the message is being sent in the context of
+     * @param messageSetter SharerMessageBody builder
+     * @return DeRecMessage protobuf
+     */
     public static Derecmessage.DeRecMessage createSharerMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -84,7 +89,7 @@ class MessageFactory {
                 .setNanos(now.getNano())
                 .build();
 
-        // Build the complete message
+        // Build the complete DeRecMessage
         return Derecmessage.DeRecMessage.newBuilder()
                 .setProtocolVersionMajor(0)
                 .setProtocolVersionMinor(9)
@@ -100,6 +105,9 @@ class MessageFactory {
                 .build();
     }
 
+    /**
+     * Creates a DeRecMessage for PairRequestMessage
+     */
     public static Derecmessage.DeRecMessage createPairRequestMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -126,6 +134,9 @@ class MessageFactory {
         return deRecMessage;
     }
 
+    /**
+     * Creates a DeRecMessage for PairResponseMessage
+     */
     public static Derecmessage.DeRecMessage createPairResponseMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -150,7 +161,9 @@ class MessageFactory {
         return deRecMessage;
     }
 
-    // Unpair
+    /**
+     * Creates a DeRecMessage for UnpairRequestMessage
+     */
     public static Derecmessage.DeRecMessage createUnpairRequestMessage(
             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId, String memo) {
         Unpair.UnpairRequestMessage unpairRequestMessage =
@@ -161,6 +174,9 @@ class MessageFactory {
         return deRecMessage;
     }
 
+    /**
+     * Creates a DeRecMessage for UnpairResponseMessage
+     */
     public static Derecmessage.DeRecMessage createUnpairResponseMessage(
             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId, ResultOuterClass.Result result) {
         Unpair.UnpairResponseMessage unpairResponseMessage =
@@ -171,7 +187,9 @@ class MessageFactory {
         return deRecMessage;
     }
 
-    // Store share
+    /**
+     * Creates a DeRecMessage for StoreShareRequestMessage
+     */
     public static Derecmessage.DeRecMessage createStoreShareRequestMessageWithoutShare(
             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId, List<Integer> keepList) {
         Logger staticLogger = LoggerFactory.getLogger(MessageFactory.class.getName());
@@ -194,20 +212,15 @@ class MessageFactory {
         return deRecMessage;
     }
 
+    /**
+     * Creates a DeRecMessage for StoreShareResponseMessage
+     */
     public static Derecmessage.DeRecMessage createStoreShareRequestMessage(
             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId, ShareImpl share) {
         Logger staticLogger = LoggerFactory.getLogger(MessageFactory.class.getName());
 
         SecretImpl secret = (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
         List<Integer> keepList = secret.versionsMap.keySet().stream().toList();
-
-        //        Storeshare.StoreShareRequestMessage storeShareRequestMessage =
-        // Storeshare.StoreShareRequestMessage.newBuilder()
-        //                .setShare(ByteString.copyFrom(share.getCommittedDeRecShare().toByteArray()))
-        //                .setShareAlgorithm(1)
-        //                .setVersion(share.getVersionNumber())
-        //                .addAllKeepList(keepList)
-        //                .build();
 
         Storeshare.StoreShareRequestMessage.Builder storeShareRequestMessageBuilder =
                 Storeshare.StoreShareRequestMessage.newBuilder();
@@ -233,6 +246,9 @@ class MessageFactory {
         return deRecMessage;
     }
 
+    /**
+     * Creates a DeRecMessage for StoreShareResponseMessage
+     */
     public static Derecmessage.DeRecMessage createStoreShareResponseMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -253,7 +269,9 @@ class MessageFactory {
         return deRecMessage;
     }
 
-    // Verify share
+    /**
+     * Creates a DeRecMessage for VerifyShareRequestMessage
+     */
     public static Derecmessage.DeRecMessage createVerifyShareRequestMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -273,6 +291,9 @@ class MessageFactory {
         return deRecMessage;
     }
 
+    /**
+     * Creates a DeRecMessage for VerifyShareResponseMessage
+     */
     public static Derecmessage.DeRecMessage createVerifyShareResponseMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -296,7 +317,9 @@ class MessageFactory {
         return deRecMessage;
     }
 
-    // Get Secret Ids Versions
+    /**
+     * Creates a DeRecMessage for GetSecretIdsVersionsRequestMessage
+     */
     public static Derecmessage.DeRecMessage createGetSecretIdsVersionsRequestMessage(
             DeRecIdentity senderId, DeRecIdentity receiverId, DeRecSecret.Id secretId) {
         Secretidsversions.GetSecretIdsVersionsRequestMessage getSecretIdsVersionsRequestMessage =
@@ -311,6 +334,9 @@ class MessageFactory {
         return deRecMessage;
     }
 
+    /**
+     * Creates a DeRecMessage for GetSecretIdsVersionsResponseMessage
+     */
     public static Derecmessage.DeRecMessage createGetSecretIdsVersionsResponseMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -342,7 +368,9 @@ class MessageFactory {
         return deRecMessage;
     }
 
-    // Verify share
+    /**
+     * Creates a DeRecMessage for GetShareRequestMessage
+     */
     public static Derecmessage.DeRecMessage createGetShareRequestMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -362,6 +390,9 @@ class MessageFactory {
         return deRecMessage;
     }
 
+    /**
+     * Creates a DeRecMessage for GetShareResponseMessage
+     */
     public static Derecmessage.DeRecMessage createGetShareResponseMessage(
             DeRecIdentity senderId,
             DeRecIdentity receiverId,
@@ -382,27 +413,15 @@ class MessageFactory {
         return deRecMessage;
     }
 
-    //     public static byte[] getPackagedBytes(int publicKeyId,
-    //                            byte[] serializedDeRecMessage) {
-    ////        byte[] bytes = deRecMessage.toByteArray();
-    //
-    //         byte[] signedBytes = signThenEncrypt(serializedDeRecMessage);
-    //        byte[] withPublicKeyId = ByteBuffer.allocate(4 + signedBytes.length)
-    //                .putInt(publicKeyId)
-    //                .put(signedBytes)
-    //                .array();
-    //        return withPublicKeyId;
-    //    }
-
     /**
      * Prepares the message to be sent over the wire
      *
-     * @param publicKeyId public key id of the message recipient
+     * @param publicKeyId            public key id of the message recipient
      * @param serializedDeRecMessage protobuf-serialized DeRecMessage
-     * @param isSharer True if message sender is a sharer. False otherwise.
-     * @param secretId secret id corresponding to the message
-     * @param receiverId DeRecIdentity of the message receiver
-     * @param shouldSign whether the message should be signed
+     * @param isSharer               True if message sender is a sharer. False otherwise.
+     * @param secretId               secret id corresponding to the message
+     * @param receiverId             DeRecIdentity of the message receiver
+     * @param shouldSign             whether the message should be signed
      * @return byte[] containing the complete message to be sent
      */
     // TODO: remove shouldSign flag since all outgoing messages are signed-then-encrypted
@@ -423,7 +442,6 @@ class MessageFactory {
         }
 
         String privateSignatureKey = "";
-        //        String publicSignatureKey = "";
         String publicEncryptionKey = "";
 
         // Find our privateSignatureKey, and receiver's publicEncryptionKey.
@@ -433,7 +451,6 @@ class MessageFactory {
             SecretImpl secret =
                     (SecretImpl) LibState.getInstance().getMeSharer().getSecret(secretId);
             privateSignatureKey = secret.getLibId().getSignaturePrivateKey();
-            //            publicSignatureKey = secret.getLibId().getSignaturePublicKey();
             Optional<? extends DeRecHelperStatus> helperStatusOptional =
                     LibState.getInstance().getMeSharer().getSecret(secretId).getHelperStatuses().stream()
                             .filter(hs -> hs.getId().equals(receiverId))
@@ -447,8 +464,6 @@ class MessageFactory {
         } else {
             privateSignatureKey =
                     LibState.getInstance().getMeHelper().getMyLibId().getSignaturePrivateKey();
-            //            publicSignatureKey =
-            // LibState.getInstance().getMeHelper().getMyLibId().getSignaturePublicKey();
             Optional<? extends SharerStatusImpl> sharerStatusOptional =
                     LibState.getInstance().getMeHelper().getSharers().stream()
                             .filter(ss -> ss.getId().equals(receiverId))
@@ -477,66 +492,12 @@ class MessageFactory {
         return withPublicKeyId;
     }
 
-    //    public static byte[] parsePackagedBytes(byte[] receivedMessage, boolean verificationNeeded) {
-    //        Logger staticLogger = LoggerFactory.getLogger(MessageFactory.class.getName());
-    //        ByteBuffer buffer = ByteBuffer.wrap(receivedMessage);
-    //        // Extract the publicKeyId from the first 4 bytes
-    //        int extractedPublicKeyId = buffer.getInt();
-    //
-    //        byte[] remainingBytes = new byte[receivedMessage.length - 4];
-    //        System.arraycopy(receivedMessage, 4, remainingBytes, 0, remainingBytes.length);
-    //
-    //        DeRecIdentity peerDeRecIdentity =
-    // LibState.getInstance().publicKeyIdToIdentityMap.get(extractedPublicKeyId);
-    //        byte[] decryptedAndVerifiedMsg;
-    //        if (verificationNeeded && (peerDeRecIdentity == null)) {
-    //            staticLogger.debug("Dropping Message: No peerDeRecIdentity found for extractedPublicKeyId: " +
-    // extractedPublicKeyId);
-    //            LibState.getInstance().printPublicKeyIdToIdentityMap();
-    //            return null;
-    //        } else if (verificationNeeded && (peerDeRecIdentity != null)) {
-    //            staticLogger.debug("About to decryptThenVerify");
-    //            decryptedAndVerifiedMsg =
-    // LibState.getInstance().getDerecCryptoImpl().decryptThenVerify(remainingBytes,
-    //                    Base64.getDecoder().decode(peerDeRecIdentity.getPublicSignatureKey())
-    //                    ,
-    // Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey()));
-    //        } else {
-    //            staticLogger.debug("About to decrypt only - not verifying");
-    //            decryptedAndVerifiedMsg = LibState.getInstance().getDerecCryptoImpl().decrypt(remainingBytes,
-    //
-    // Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey()));
-    //        }
-    //
-    ////        if (peerDeRecIdentity == null) {
-    ////            staticLogger.debug("Dropping Message: No peerDeRecIdentity found for extractedPublicKeyId: " +
-    // extractedPublicKeyId);
-    ////            LibState.getInstance().printPublicKeyIdToIdentityMap();
-    ////            return null;
-    ////        }
-    ////        if (LibState.getInstance().useRealCryptoLib) {
-    ////            byte[] decryptedAndVerifiedMsg;
-    ////            if (peerDeRecIdentity == null) {
-    ////                decryptedAndVerifiedMsg = LibState.getInstance().getDerecCryptoImpl().decrypt(remainingBytes,
-    ////                        LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey().getBytes(),
-    ////                        LibState.getInstance().myHelperAndSharerId.getEncryptionPublicKey().getBytes());
-    ////            } else {
-    ////                decryptedAndVerifiedMsg =
-    // LibState.getInstance().getDerecCryptoImpl().decryptThenVerify(remainingBytes,
-    ////                        peerDeRecIdentity.getPublicSignatureKey().getBytes()
-    ////                        , LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey().getBytes(),
-    ////                        LibState.getInstance().myHelperAndSharerId.getEncryptionPublicKey().getBytes());
-    ////            }
-    //
-    //
-    //            return decryptedAndVerifiedMsg;
-    //
-    ////        } else {
-    ////            // parse these bytes now
-    ////            return remainingBytes;
-    ////        }
-    //    }
-
+    /**
+     * Parses a received message
+     *
+     * @param receivedMessage byte[] containing the received message
+     * @return Whether parsing the message was successful
+     */
     public static boolean parseAndProcessPackagedBytes(byte[] receivedMessage) {
         Logger staticLogger = LoggerFactory.getLogger(MessageFactory.class.getName());
         try {
@@ -552,15 +513,11 @@ class MessageFactory {
                 return false;
             }
 
+            // Process the remaining bytes now that we have extracted the publicKeyId
             byte[] remainingBytes = new byte[receivedMessage.length - 4];
             System.arraycopy(receivedMessage, 4, remainingBytes, 0, remainingBytes.length);
 
-            //            DeRecIdentity peerDeRecIdentity =
-            // LibState.getInstance().publicKeyIdToIdentityMap.get(extractedPublicKeyId);
-            byte[] decryptedAndVerifiedMsg;
-
             Derecmessage.DeRecMessage derecmessage = null;
-
             byte[] decryptedMsg = LibState.getInstance()
                     .getDerecCryptoImpl()
                     .decrypt(remainingBytes, Base64.getDecoder().decode(myIdentity.getEncryptionPrivateKey()));
@@ -606,8 +563,6 @@ class MessageFactory {
                         .getPublicSignatureKey();
             } else {
                 // get the message sender's public signature key by referencing messageHashToIdentityMap
-                //                DeRecIdentity senderDeRecIdentity =
-                // LibState.getInstance().messageHashToIdentityMap.get(derecmessage.getSender());
                 DeRecIdentity senderDeRecIdentity = LibState.getInstance()
                         .queryMessageHashAndSecretIdToIdentity(
                                 derecmessage.getSender(),
@@ -629,78 +584,5 @@ class MessageFactory {
             staticLogger.error("Exception in parseAndProcessPackagedBytes", ex);
             return false;
         }
-    }
-
-    //     void junk() {
-    //
-    //        boolean onlyAcceptPairingMessages = true;
-    //        try {
-    //            staticLogger.debug("About to decrypt (no verify)");
-    //            decryptedMsg = LibState.getInstance().getDerecCryptoImpl().decrypt(remainingBytes,
-    //
-    // Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey()));
-    //            if (decryptedMsg != null) {
-    //                try {
-    //                    derecmessage = Derecmessage.DeRecMessage.parseFrom(decryptedMsg);
-    //                } catch (Exception ex) {
-    //                    staticLogger.debug("About to decryptThenVerify");
-    //                    decryptedMsg = LibState.getInstance().getDerecCryptoImpl().decryptThenVerify(remainingBytes,
-    //                            Base64.getDecoder().decode(peerDeRecIdentity.getPublicSignatureKey())
-    //                            ,
-    // Base64.getDecoder().decode(LibState.getInstance().myHelperAndSharerId.getEncryptionPrivateKey()));
-    //                    if (decryptedMsg != null) {
-    //                        try {
-    //                            derecmessage = Derecmessage.DeRecMessage.parseFrom(decryptedMsg);
-    //                            onlyAcceptPairingMessages = false;
-    //                        } catch (Exception ex2) {
-    //                            staticLogger.debug("Exception in decryptThenVerify", ex2);
-    //                        }
-    //                    }
-    //                }
-    //            }
-    //        } catch (Exception ex3) {
-    //            staticLogger.debug("Exception in decryptThenVerify", ex3);
-    //        }
-    //
-    //        if (!onlyAcceptPairingMessages ||
-    //                (onlyAcceptPairingMessages &&
-    //                        ((derecmessage.hasMessageBodies() &&
-    //                                derecmessage.getMessageBodies().hasSharerMessageBodies() &&
-    //
-    // derecmessage.getMessageBodies().getSharerMessageBodies().getSharerMessageBody(0).hasPairRequestMessage()) ||
-    //                                (derecmessage.hasMessageBodies() &&
-    //                                        derecmessage.getMessageBodies().hasHelperMessageBodies() &&
-    //
-    // derecmessage.getMessageBodies().getHelperMessageBodies().getHelperMessageBody(0).hasPairResponseMessage()))
-    //                )) {
-    //            MessageParser mp = new MessageParser();
-    //            mp.parseMessage(extractedPublicKeyId, derecmessage);
-    //            return true;
-    //        } else {
-    //            // Drop the message
-    //            logger.info("Handle: could not verify the signature on the received message, and it " +
-    //                    "wasn't a pairing message. Dropping");
-    //        }
-    //        return false;
-    //    }
-
-    public static int extractPublicKeyIdFromPackagedBytes(byte[] receivedMessage) {
-        ByteBuffer buffer = ByteBuffer.wrap(receivedMessage);
-        // Extract the publicKeyId from the first 4 bytes
-        int extractedPublicKeyId = buffer.getInt();
-        return extractedPublicKeyId;
-    }
-
-    //    public static byte[] signThenEncrypt(byte[] serializedDeRecMessage, byte[] signaturePrivateKey,
-    //                                         byte[] encryptionPublicKey)
-    public static byte[] signThenEncrypt(byte[] serializedDeRecMessage) {
-        //  public byte[] signThenEncrypt(byte[] message, byte[] signPrivKey, byte[] encPubKey) {
-        // TODO implement this
-        return serializedDeRecMessage;
-    }
-
-    public static byte[] decryptThenVerifySign(int publicKeyId, byte[] deserializedDeRecMessage) {
-        // TODO implement this
-        return deserializedDeRecMessage;
     }
 }

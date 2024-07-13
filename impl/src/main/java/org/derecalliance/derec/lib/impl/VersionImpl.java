@@ -88,7 +88,6 @@ public class VersionImpl implements DeRecVersion {
      */
     public void createShares() {
         try {
-
             // Find the list of healthy helpers (Paired helpers)
             List<DeRecHelperStatus> filteredList = (List<DeRecHelperStatus>) secret.getHelperStatuses().stream()
                     .filter(helperStatus -> helperStatus.getStatus() == DeRecPairingStatus.PairingStatus.PAIRED)
