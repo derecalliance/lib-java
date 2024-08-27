@@ -5,7 +5,6 @@ module org.derecalliance.derec.lib.impl {
     requires java.net.http;
     requires org.slf4j;
     requires derec.crypto.bridge;
-    //    requires cryptography;
     exports org.derecalliance.derec.lib.impl;
     exports org.derecalliance.derec.lib.impl.commands;
 
